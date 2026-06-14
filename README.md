@@ -46,6 +46,7 @@ final_temperature_wl_topk.png
 cost_curve_wl_only.png
 cost_curve_wl_tmax.png
 cost_curve_wl_topk.png
+final_summary.png
 metrics.csv
 summary.json
 config.yaml

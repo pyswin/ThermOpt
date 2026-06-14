@@ -12,7 +12,7 @@ import pandas as pd
 import yaml
 
 from thermopt.data.case_generator import generate_random_case, random_initial_layout
-from thermopt.layout.visualization import save_cost_curve, save_layout_figure, save_temperature_figure
+from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
 from thermopt.optimizer.simulated_annealing import optimize
 from thermopt.thermal.heuristic import simulate_temperature
@@ -54,6 +54,7 @@ def run(config_path: Path) -> Path:
     save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
 
     rows: list[dict] = []
+    final_results: list[dict] = []
     summary: dict = {
         "seed": seed,
         "config": str(config_path),
@@ -92,8 +93,18 @@ def run(config_path: Path) -> Path:
             **result.best_cost.metrics,
         }
         rows.append(row)
+        final_results.append(
+            {
+                "name": exp_name,
+                "layout": result.best_layout,
+                "temperature": final_temperature,
+                "metrics": result.best_cost.metrics,
+            }
+        )
         summary["experiments"][exp_name] = row
 
+    if final_results:
+        save_final_summary(case, final_results, output_dir / "final_summary.png")
     pd.DataFrame(rows).to_csv(output_dir / "metrics.csv", index=False)
     with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
