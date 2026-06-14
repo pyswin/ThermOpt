@@ -6,7 +6,7 @@ The goal is to make the optimization loop easy to inspect and extend:
 
 
 
-录说明
+# 目录说明
   configs/
   放实验配置，比如 chiplet 数量、outline、热仿真网格、目标函数权重、SA 参数。
 
@@ -37,9 +37,9 @@ The goal is to make the optimization loop easy to inspect and extend:
   outputs/
   运行结果目录，只保留 .gitkeep，图片和 csv 不提交。
 
-  分工建议
+## 分工
 
-  1. 热仿真负责人
+  1. 热仿真负责人(hz)
      主要维护：
 
   - src/thermopt/thermal/
@@ -48,7 +48,7 @@ The goal is to make the optimization loop easy to inspect and extend:
   目标是保证输入 case + layout，输出 temperature map。后续接 HotSpot、compact solver、surrogate 都不要影响
   optimizer。
 
-  2. 目标函数负责人
+  2. 目标函数负责人(YWK)
      主要维护：
 
   - src/thermopt/objective/cost.py
@@ -57,7 +57,7 @@ The goal is to make the optimization loop easy to inspect and extend:
 
   目标是定义 WL、Tmax、top-k、threshold、overlap、outline 等如何合成 cost。
 
-  3. 优化方法负责人
+  3. 优化方法负责人(XKY + HZ + YWK)
      主要维护：
 
   - src/thermopt/optimizer/
@@ -65,7 +65,7 @@ The goal is to make the optimization loop easy to inspect and extend:
 
   目标是只依赖 objective callback，不关心 thermal 具体怎么实现。
 
-  4. 主流程负责人
+  4. 主流程负责人(HZ)
      主要维护：
 
   - src/thermopt/experiments/run_v0_sa.py
