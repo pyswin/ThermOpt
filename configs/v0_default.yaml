@@ -1,0 +1,54 @@
+seed: 7
+output_root: outputs
+experiment_name: v0_sa
+
+case:
+  num_chiplets: 14
+  outline_width: 100.0
+  outline_height: 80.0
+  min_size: 8.0
+  max_size: 18.0
+  min_power: 1.0
+  max_power: 8.0
+  hot_chiplet_fraction: 0.25
+  hot_power_multiplier: 2.2
+  num_nets: 18
+  net_min_degree: 2
+  net_max_degree: 4
+
+thermal:
+  grid_size: [100, 80]
+  ambient: 25.0
+  scale: 1.8
+  sigma_factor: 1.0
+
+objective:
+  alpha: 1.0
+  beta: 1.0
+  gamma: 50.0
+  delta: 80.0
+  thermal_mode: topk
+  topk_percent: 0.05
+  temperature_limit: 85.0
+
+optimizer:
+  iterations: 900
+  initial_anneal_temp: 1.0
+  final_anneal_temp: 0.01
+  move_scale: 10.0
+  report_every: 10
+
+experiments:
+  - name: wl_only
+    objective:
+      beta: 0.0
+      thermal_mode: topk
+  - name: wl_tmax
+    objective:
+      beta: 1.0
+      thermal_mode: tmax
+  - name: wl_topk
+    objective:
+      beta: 1.0
+      thermal_mode: topk
+      topk_percent: 0.05
