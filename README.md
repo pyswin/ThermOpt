@@ -9,7 +9,7 @@ The goal is to make the optimization loop easy to inspect and extend:
 # 目录说明
   configs/
   放实验配置，比如 chiplet 数量、outline、热仿真网格、目标函数权重、SA 参数。
-
+   
   scripts/
   放用户入口脚本。现在主要是 scripts/run_v0.sh，一键跑 V0 实验。
 
