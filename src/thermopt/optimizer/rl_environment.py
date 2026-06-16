@@ -7,7 +7,7 @@ import numpy as np
 
 from thermopt.layout.objects import FloorplanCase, Layout
 from thermopt.objective.cost import CostResult
-from thermopt.optimizer.simulated_annealing import propose_move
+from thermopt.optimizer.simulated_annealing import propose_named_move
 
 
 @dataclass(frozen=True)
@@ -30,6 +30,7 @@ class ThermalFloorplanEnv:
         objective: Callable[[Layout], CostResult],
         max_steps: int = 100,
         move_scale: float = 10.0,
+        accept_worse_probability: float = 0.02,
         seed: int = 0,
     ) -> None:
         self.case = case
@@ -37,6 +38,7 @@ class ThermalFloorplanEnv:
         self.objective = objective
         self.max_steps = max_steps
         self.move_scale = move_scale
+        self.accept_worse_probability = accept_worse_probability
         self.rng = np.random.default_rng(seed)
         self.layout = initial_layout
         self.cost = objective(initial_layout)
@@ -54,17 +56,25 @@ class ThermalFloorplanEnv:
         if action < 0 or action >= len(self.action_names):
             raise ValueError(f"action must be in [0, {len(self.action_names) - 1}]")
         previous_cost = self.cost.total
-        self.layout = propose_move(self.case, self.layout, self.rng, self.move_scale)
-        self.cost = self.objective(self.layout)
+        move = self.action_names[action]
+        candidate_layout = propose_named_move(self.case, self.layout, self.rng, self.move_scale, move)
+        candidate_cost = self.objective(candidate_layout)
+        accepted = candidate_cost.total <= self.cost.total or self.rng.random() < self.accept_worse_probability
+        if accepted:
+            self.layout = candidate_layout
+            self.cost = candidate_cost
         self.steps += 1
         reward = previous_cost - self.cost.total
+        if not accepted:
+            reward = -0.01
         done = self.steps >= self.max_steps
         return StepResult(
             observation=self._observation(),
             reward=float(reward),
             done=done,
             info={
-                "action": self.action_names[action],
+                "action": move,
+                "accepted": accepted,
                 "cost": self.cost.total,
                 "metrics": self.cost.metrics,
             },
@@ -74,6 +84,7 @@ class ThermalFloorplanEnv:
         return {
             "step": self.steps,
             "cost": self.cost.total,
+            "metrics": self.cost.metrics,
             "placements": [
                 {
                     "chiplet_id": placement.chiplet_id,

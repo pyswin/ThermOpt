@@ -126,6 +126,14 @@ config.yaml
 
 `outputs/` is ignored by Git except for `outputs/.gitkeep`.
 
+To compare simulated annealing, genetic algorithm, and the lightweight RL policy optimizer:
+
+```bash
+bash scripts/run_optimizer_comparison.sh
+```
+
+This writes `final_layout_*`, `final_temperature_*`, `cost_curve_*`, `metrics.csv`, and `optimizer_comparison_summary.png` under a timestamped `outputs/*_optimizer_comparison/` folder. The comparison script also prints optimizer progress logs, including RL training episodes.
+
 ## Method Overview
 
 V0 uses randomly generated chiplet cases with fixed outline constraints, optional random netlists, and per-chiplet power values. A layout is represented by each chiplet's `(x, y, rotation)` state.
