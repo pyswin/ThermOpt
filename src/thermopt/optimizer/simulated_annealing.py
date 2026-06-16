@@ -74,7 +74,19 @@ def optimize(
 
 
 def propose_move(case: FloorplanCase, layout: Layout, rng: np.random.Generator, move_scale: float) -> Layout:
-    move = rng.choice(["translate", "swap", "rotate", "perturb"], p=[0.45, 0.2, 0.15, 0.2])
+    move = str(rng.choice(["translate", "swap", "rotate", "perturb"], p=[0.45, 0.2, 0.15, 0.2]))
+    return propose_named_move(case, layout, rng, move_scale, move)
+
+
+def propose_named_move(
+    case: FloorplanCase,
+    layout: Layout,
+    rng: np.random.Generator,
+    move_scale: float,
+    move: str,
+) -> Layout:
+    if move not in {"translate", "swap", "rotate", "perturb"}:
+        raise ValueError(f"unknown move type: {move}")
     placements = list(layout.placements)
     idx = int(rng.integers(0, len(placements)))
 
