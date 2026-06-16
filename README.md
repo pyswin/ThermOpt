@@ -175,7 +175,7 @@ src/thermopt/
   layout/        data objects, geometry, rasterization, visualization
   thermal/       heuristic thermal simulator
   objective/     metrics and scalar objective
-  optimizer/     simulated annealing
+  optimizer/     simulated annealing, genetic algorithm, and RL environment
   experiments/   runnable V0 pipeline
 ```
 
