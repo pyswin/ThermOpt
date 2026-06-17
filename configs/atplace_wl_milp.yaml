@@ -1,0 +1,32 @@
+seed: 17
+output_root: outputs
+experiment_name: atplace_wl_milp
+
+case:
+  source: atplace
+  data_dir: external/ATPlace_pub/cases
+  cases:
+    - Case1
+  unit_scale: 0.001
+  initial_layout: random
+
+thermal:
+  grid_size: [100, 100]
+  ambient: 25.0
+  scale: 0.05
+  sigma_factor: 1.0
+
+objective:
+  alpha: 1.0
+  beta: 0.0
+  gamma: 50.0
+  delta: 80.0
+  thermal_mode: topk
+  topk_percent: 0.05
+  temperature_limit: 85.0
+
+milp_wl:
+  allow_rotation: true
+  time_limit: 120
+  mip_rel_gap: 0.01
+  verbose: false

@@ -1,0 +1,50 @@
+seed: 7
+output_root: outputs
+experiment_name: atplace_v0
+
+case:
+  source: atplace
+  data_dir: external/ATPlace_pub/cases
+  cases:
+    - Case1
+    - Case2
+    - Case3
+  unit_scale: 0.001
+  initial_layout: random
+
+thermal:
+  grid_size: [100, 100]
+  ambient: 25.0
+  scale: 0.05
+  sigma_factor: 1.0
+
+objective:
+  alpha: 1.0
+  beta: 1.0
+  gamma: 50.0
+  delta: 80.0
+  thermal_mode: topk
+  topk_percent: 0.05
+  temperature_limit: 85.0
+
+optimizer:
+  iterations: 250
+  initial_anneal_temp: 1.0
+  final_anneal_temp: 0.01
+  move_scale: 5.0
+  report_every: 25
+
+experiments:
+  - name: wl_only
+    objective:
+      beta: 0.0
+      thermal_mode: topk
+  - name: wl_tmax
+    objective:
+      beta: 1.0
+      thermal_mode: tmax
+  - name: wl_topk
+    objective:
+      beta: 1.0
+      thermal_mode: topk
+      topk_percent: 0.05

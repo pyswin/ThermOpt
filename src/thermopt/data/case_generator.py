@@ -41,8 +41,8 @@ def random_initial_layout(case: FloorplanCase, seed: int) -> Layout:
     rng = np.random.default_rng(seed)
     placements: list[Placement] = []
     for chiplet in case.chiplets:
-        rotation = int(rng.choice([0, 90]))
-        width, height = (chiplet.height, chiplet.width) if rotation == 90 else (chiplet.width, chiplet.height)
+        rotation = int(rng.choice([0, 90, 180, 270]))
+        width, height = (chiplet.height, chiplet.width) if rotation % 180 == 90 else (chiplet.width, chiplet.height)
         max_x = max(0.0, case.outline_width - width)
         max_y = max(0.0, case.outline_height - height)
         placements.append(

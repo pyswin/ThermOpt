@@ -14,6 +14,19 @@ def center(case: FloorplanCase, placement: Placement) -> tuple[float, float]:
     return (x0 + x1) * 0.5, (y0 + y1) * 0.5
 
 
+def rotate_offset(offset_x: float, offset_y: float, rotation: int) -> tuple[float, float]:
+    rotation = rotation % 360
+    if rotation == 0:
+        return offset_x, offset_y
+    if rotation == 90:
+        return -offset_y, offset_x
+    if rotation == 180:
+        return -offset_x, -offset_y
+    if rotation == 270:
+        return offset_y, -offset_x
+    raise ValueError(f"unsupported rotation: {rotation}")
+
+
 def overlap_area(case: FloorplanCase, a: Placement, b: Placement) -> float:
     ax0, ay0, ax1, ay1 = bounds(case, a)
     bx0, by0, bx1, by1 = bounds(case, b)
@@ -49,10 +62,17 @@ def hpwl(case: FloorplanCase, layout: Layout) -> float:
     for net in case.nets:
         xs: list[float] = []
         ys: list[float] = []
-        for chiplet_id in net.chiplets:
-            cx, cy = center(case, placement_by_id[chiplet_id])
+        if len(set(net.chiplets)) < 2:
+            continue
+        offsets = net.pin_offsets or tuple((0.0, 0.0) for _ in net.chiplets)
+        for chiplet_id, (offset_x, offset_y) in zip(net.chiplets, offsets):
+            placement = placement_by_id[chiplet_id]
+            cx, cy = center(case, placement)
+            offset_x, offset_y = rotate_offset(offset_x, offset_y, placement.rotation)
             xs.append(cx)
             ys.append(cy)
+            xs[-1] += offset_x
+            ys[-1] += offset_y
         if xs:
             total += (max(xs) - min(xs)) + (max(ys) - min(ys))
     return total

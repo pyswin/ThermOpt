@@ -77,8 +77,9 @@ def save_final_summary(
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     names = [item["name"] for item in results]
+    plot_cols = max(2, len(results))
     fig = plt.figure(figsize=(14, 10))
-    grid = fig.add_gridspec(4, len(results), height_ratios=[1.2, 1.0, 0.8, 0.8])
+    grid = fig.add_gridspec(4, plot_cols, height_ratios=[1.2, 1.0, 0.8, 0.8])
 
     for col, item in enumerate(results):
         ax_layout = fig.add_subplot(grid[0, col])
@@ -95,8 +96,8 @@ def save_final_summary(
     ]
     for i, (key, label) in enumerate(metric_specs):
         row = 2 + i // 2
-        col_start = (i % 2) * max(1, len(results) // 2)
-        col_end = len(results) if i % 2 else max(1, len(results) // 2)
+        col_start = (i % 2) * max(1, plot_cols // 2)
+        col_end = plot_cols if i % 2 else max(1, plot_cols // 2)
         ax = fig.add_subplot(grid[row, col_start:col_end])
         values = [item["metrics"][key] for item in results]
         bars = ax.bar(names, values, color="#4c78a8")
