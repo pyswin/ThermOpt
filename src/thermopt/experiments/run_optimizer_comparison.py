@@ -10,10 +10,11 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from thermopt.data.case_generator import generate_random_case, random_initial_layout
+from thermopt.data.inputs import CaseInput
+from thermopt.experiments.run_v0_sa import load_inputs
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
-from thermopt.optimizer import genetic_algorithm, rl_policy, simulated_annealing
+from thermopt.optimizer import atplace_wl, continuous_wl, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
 from thermopt.thermal.heuristic import simulate_temperature
 
 
@@ -29,24 +30,29 @@ def make_output_dir(config: dict) -> Path:
     return output_dir
 
 
-def run(config_path: Path) -> Path:
-    config = load_config(config_path)
-    output_dir = make_output_dir(config)
-    shutil.copy2(config_path, output_dir / "config.yaml")
-
-    seed = int(config.get("seed", 0))
-    case = generate_random_case(config["case"], seed)
-    initial_layout = random_initial_layout(case, seed + 1)
+def run_single_case(config: dict, config_path: Path, case_input: CaseInput, output_dir: Path, seed: int) -> dict:
+    case = case_input.case
+    initial_layout = case_input.layout
     objective = Objective(case, config["thermal"], config["objective"], initial_layout)
     initial_temperature = simulate_temperature(case, initial_layout, config["thermal"])
     save_layout_figure(case, initial_layout, output_dir / "initial_layout.png", "Initial layout")
     save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
 
-    runs = [
-        ("simulated_annealing", simulated_annealing.optimize, config["simulated_annealing"], seed + 100),
-        ("genetic_algorithm", genetic_algorithm.optimize, config["genetic_algorithm"], seed + 200),
-        ("reinforcement_learning", rl_policy.optimize, config["reinforcement_learning"], seed + 300),
-    ]
+    runs = []
+    if "simulated_annealing" in config:
+        runs.append(("simulated_annealing", simulated_annealing.optimize, config["simulated_annealing"], seed + 100))
+    if "genetic_algorithm" in config:
+        runs.append(("genetic_algorithm", genetic_algorithm.optimize, config["genetic_algorithm"], seed + 200))
+    if "reinforcement_learning" in config:
+        runs.append(("reinforcement_learning", rl_policy.optimize, config["reinforcement_learning"], seed + 300))
+    if "sequence_pair" in config:
+        runs.append(("sequence_pair", sequence_pair.optimize, config["sequence_pair"], seed + 400))
+    if "continuous_wl" in config:
+        runs.append(("continuous_wl", continuous_wl.optimize, config["continuous_wl"], seed + 500))
+    if "milp_wl" in config:
+        runs.append(("milp_wl", milp_wl.optimize, config["milp_wl"], seed + 600))
+    if "atplace_wl" in config:
+        runs.append(("atplace_wl", atplace_wl.optimize, config["atplace_wl"], seed + 700))
 
     rows: list[dict] = []
     final_results: list[dict] = []
@@ -54,6 +60,10 @@ def run(config_path: Path) -> Path:
         "seed": seed,
         "config": str(config_path),
         "output_dir": str(output_dir),
+        "case": case_input.name,
+        "source_path": str(case_input.source_path) if str(case_input.source_path) else None,
+        "num_chiplets": len(case.chiplets),
+        "num_nets": len(case.nets),
         "optimizers": {},
     }
 
@@ -81,6 +91,12 @@ def run(config_path: Path) -> Path:
             row["training_episodes"] = result.training_episodes
             row["rollout_steps"] = result.rollout_steps
             row["mean_episode_return"] = float(sum(result.episode_returns) / max(1, len(result.episode_returns)))
+        if hasattr(result, "solver_success"):
+            row["solver_success"] = result.solver_success
+            row["solver_message"] = result.solver_message
+            row["solver_objective"] = result.solver_objective
+        if hasattr(result, "phases"):
+            row["phases"] = result.phases
 
         print(
             f"[compare] done optimizer={name} runtime={runtime:.2f}s "
@@ -103,6 +119,39 @@ def run(config_path: Path) -> Path:
     with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     print(f"[compare] saved outputs to {output_dir}")
+    return summary
+
+
+def run(config_path: Path) -> Path:
+    config = load_config(config_path)
+    output_dir = make_output_dir(config)
+    shutil.copy2(config_path, output_dir / "config.yaml")
+
+    seed = int(config.get("seed", 0))
+    inputs = load_inputs(config, seed)
+    summaries = {}
+    for index, case_input in enumerate(inputs):
+        case_output_dir = output_dir
+        if len(inputs) > 1:
+            case_output_dir = output_dir / case_input.name
+            case_output_dir.mkdir(parents=True, exist_ok=False)
+        summaries[case_input.name] = run_single_case(
+            config,
+            config_path,
+            case_input,
+            case_output_dir,
+            seed + index * 1000,
+        )
+
+    if len(inputs) > 1:
+        with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
+            json.dump({"config": str(config_path), "output_dir": str(output_dir), "cases": summaries}, f, indent=2)
+        rows = []
+        for case_name, summary in summaries.items():
+            for optimizer, row in summary["optimizers"].items():
+                rows.append({"case": case_name, "optimizer": optimizer, **row})
+        pd.DataFrame(rows).to_csv(output_dir / "metrics.csv", index=False)
+        print(f"[compare] saved aggregate outputs to {output_dir}")
     return output_dir
 
 

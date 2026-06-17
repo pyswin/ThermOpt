@@ -16,6 +16,7 @@ class Chiplet:
 class Net:
     id: str
     chiplets: tuple[str, ...]
+    pin_offsets: tuple[tuple[float, float], ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ class Placement:
         return replace(self, x=self.x if x is None else x, y=self.y if y is None else y)
 
     def rotated(self) -> "Placement":
-        return replace(self, rotation=90 if self.rotation % 180 == 0 else 0)
+        return replace(self, rotation=(self.rotation + 90) % 360)
 
 
 @dataclass(frozen=True)

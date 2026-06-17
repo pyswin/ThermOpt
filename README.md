@@ -134,6 +134,52 @@ bash scripts/run_optimizer_comparison.sh
 
 This writes `final_layout_*`, `final_temperature_*`, `cost_curve_*`, `metrics.csv`, and `optimizer_comparison_summary.png` under a timestamped `outputs/*_optimizer_comparison/` folder. The comparison script also prints optimizer progress logs, including RL training episodes.
 
+To run the V0 flow on ATPlace2.5D public benchmark cases, clone the public cases once and then run:
+
+```bash
+mkdir -p external
+git clone --depth 1 https://github.com/Brilight/ATPlace_pub.git external/ATPlace_pub
+PYTHONPATH=src python -m thermopt.experiments.run_v0_sa --config configs/atplace_v0.yaml
+```
+
+This uses `Case1`, `Case2`, and `Case3` from `external/ATPlace_pub/cases` as the main benchmark input. The loader reads each case's `.blocks`, `.nets`, and `.power` files into a `FloorplanCase`, then starts from a deterministic random initial layout. Thermal evaluation still uses the current heuristic simulator until HotSpot or a learned thermal model is wired into `src/thermopt/thermal/`.
+
+The `pointwise/` CSVs are treated as thermal-model training data, not as the main placement benchmark. To compare those samples with the ATPlace cases before training or deployment:
+
+```bash
+PYTHONPATH=src python -m thermopt.experiments.compare_datasets
+```
+
+The comparison report is written to `outputs/dataset_comparison.json`.
+
+For a WL-only baseline that is closer to the fixed-outline legalization problem, use the MILP optimizer on a small ATPlace case:
+
+```bash
+PYTHONPATH=src python -m thermopt.experiments.run_optimizer_comparison --config configs/atplace_wl_milp.yaml
+```
+
+The MILP model uses the same ATPlace-style pin-offset HPWL as `src/thermopt/layout/geometry.py`, binary non-overlap constraints, optional 0/90 rotation, and the current outline dimensions. It is intended as an exact or near-exact diagnostic baseline for small cases, not as the final scalable placement engine.
+
+To reproduce the current ATPlace2.5D-style WL-only results for the first three public cases:
+
+```bash
+PYTHONPATH=src python -m thermopt.experiments.run_optimizer_comparison --config configs/atplace_wl_reproduce.yaml
+```
+
+For the larger follow-up run on Case4-Case10:
+
+```bash
+PYTHONPATH=src python -m thermopt.experiments.run_optimizer_comparison --config configs/atplace_wl_remaining.yaml
+```
+
+`configs/atplace_wl_remaining.yaml` is useful for Case4-Case8, but Case9 and Case10 are currently too large for the full pairwise MILP to finish reliably with SciPy HiGHS under the same time budget. The latest local Case1-Case8 comparison JSON is written to:
+
+```text
+outputs/20260617_203121_atplace_wl_remaining/case1_case8_wl_summary.json
+```
+
+Generated `outputs/` artifacts remain ignored by Git.
+
 ## Method Overview
 
 V0 uses randomly generated chiplet cases with fixed outline constraints, optional random netlists, and per-chiplet power values. A layout is represented by each chiplet's `(x, y, rotation)` state.
@@ -145,6 +191,25 @@ T(x, y) = Tamb + scale * sum_i P_i * exp(-d_i^2 / (2 * sigma_i^2))
 ```
 
 This is not a physical replacement for HotSpot or a compact thermal solver. It is a lightweight oracle for validating the optimization loop: clustered high-power chiplets should produce higher hotspots, while spreading them should reduce hotspots.
+
+### ATPlace2.5D-Style WL Optimizer
+
+`src/thermopt/optimizer/atplace_wl.py` implements the current strongest WL-only flow. It is inspired by the WL-driven flow in the ATPlace2.5D paper, but it is not a byte-for-byte reproduction of the authors' implementation.
+
+The implemented flow is:
+
+1. Build a chiplet-pair clump model from the netlist, including ATPlace pin offsets.
+2. Solve a fixed-outline MILP with four legal orientations: 0, 90, 180, and 270 degrees.
+3. Refine the MILP layout with a continuous WL/density/outline objective.
+4. Run a legal sequence-pair perturbation fallback.
+5. Select the best legal layout across all phases.
+
+This matches the paper's high-level ideas: MILP initialization, analytical placement, density/legality pressure, perturbation, and legalization. The main differences are practical:
+
+- SciPy HiGHS is used instead of Gurobi.
+- The MILP objective aggregates nets into chiplet-pair clumps for scalability.
+- Thermal optimization is disabled in the WL-only configs because HotSpot and the learned thermal model are not wired into the main optimizer yet.
+- Large Case9/Case10 runs need a more scalable analytical placement/legalization path or a commercial MILP solver.
 
 ## Objective Function
 

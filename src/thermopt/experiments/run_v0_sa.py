@@ -11,7 +11,10 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from thermopt.data.atplace import load_atplace_cases
 from thermopt.data.case_generator import generate_random_case, random_initial_layout
+from thermopt.data.inputs import CaseInput
+from thermopt.data.pointwise import load_pointwise_cases
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
 from thermopt.optimizer.simulated_annealing import optimize
@@ -41,14 +44,24 @@ def make_output_dir(config: dict) -> Path:
     return output_dir
 
 
-def run(config_path: Path) -> Path:
-    config = load_config(config_path)
-    output_dir = make_output_dir(config)
-    shutil.copy2(config_path, output_dir / "config.yaml")
+def load_inputs(config: dict, seed: int) -> list[CaseInput]:
+    case_config = config["case"]
+    source = str(case_config.get("source", "random")).lower()
+    if source == "atplace":
+        return load_atplace_cases(case_config, seed)
+    if source == "pointwise":
+        return load_pointwise_cases(case_config)
+    if source != "random":
+        raise ValueError(f"Unknown case source: {source}")
 
-    seed = int(config.get("seed", 0))
-    case = generate_random_case(config["case"], seed)
+    case = generate_random_case(case_config, seed)
     initial_layout = random_initial_layout(case, seed + 1)
+    return [CaseInput("random", case, initial_layout, Path(""))]
+
+
+def run_single_case(config: dict, config_path: Path, case_input: CaseInput, output_dir: Path, seed: int) -> dict:
+    case = case_input.case
+    initial_layout = case_input.layout
     initial_temperature = simulate_temperature(case, initial_layout, config["thermal"])
     save_layout_figure(case, initial_layout, output_dir / "initial_layout.png", "Initial layout")
     save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
@@ -59,6 +72,10 @@ def run(config_path: Path) -> Path:
         "seed": seed,
         "config": str(config_path),
         "output_dir": str(output_dir),
+        "case": case_input.name,
+        "source_path": str(case_input.source_path) if str(case_input.source_path) else None,
+        "num_chiplets": len(case.chiplets),
+        "num_nets": len(case.nets),
         "experiments": {},
     }
 
@@ -108,6 +125,33 @@ def run(config_path: Path) -> Path:
     pd.DataFrame(rows).to_csv(output_dir / "metrics.csv", index=False)
     with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
+    return summary
+
+
+def run(config_path: Path) -> Path:
+    config = load_config(config_path)
+    output_dir = make_output_dir(config)
+    shutil.copy2(config_path, output_dir / "config.yaml")
+
+    seed = int(config.get("seed", 0))
+    inputs = load_inputs(config, seed)
+    summaries = {}
+    for index, case_input in enumerate(inputs):
+        case_output_dir = output_dir
+        if len(inputs) > 1:
+            case_output_dir = output_dir / case_input.name
+            case_output_dir.mkdir(parents=True, exist_ok=False)
+        summaries[case_input.name] = run_single_case(
+            config,
+            config_path,
+            case_input,
+            case_output_dir,
+            seed + index * 1000,
+        )
+
+    if len(inputs) > 1:
+        with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
+            json.dump({"config": str(config_path), "output_dir": str(output_dir), "cases": summaries}, f, indent=2)
     return output_dir
 
 
