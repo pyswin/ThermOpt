@@ -6,6 +6,10 @@ __pycache__/
 outputs/*
 !outputs/.gitkeep
 pointwise/
+external/**/.git/
+external/**/__pycache__/
+external/**/results/
+external/**/repro_runs/
 *.log
 .cache/
 .pytest_cache/
