@@ -5,7 +5,6 @@ __pycache__/
 .DS_Store
 outputs/*
 !outputs/.gitkeep
-external/
 pointwise/
 *.log
 .cache/
