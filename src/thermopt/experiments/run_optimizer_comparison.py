@@ -14,7 +14,7 @@ from thermopt.data.inputs import CaseInput
 from thermopt.experiments.run_v0_sa import load_inputs
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
-from thermopt.optimizer import atmplace, atplace, continuous_wl, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
+from thermopt.optimizer import atmplace, atplace, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
 from thermopt.thermal.heuristic import simulate_temperature
 
 
@@ -47,8 +47,6 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         runs.append(("reinforcement_learning", rl_policy.optimize, config["reinforcement_learning"], seed + 300))
     if "sequence_pair" in config:
         runs.append(("sequence_pair", sequence_pair.optimize, config["sequence_pair"], seed + 400))
-    if "continuous_wl" in config:
-        runs.append(("continuous_wl", continuous_wl.optimize, config["continuous_wl"], seed + 500))
     if "milp_wl" in config:
         runs.append(("milp_wl", milp_wl.optimize, config["milp_wl"], seed + 600))
     if "atplace" in config:
