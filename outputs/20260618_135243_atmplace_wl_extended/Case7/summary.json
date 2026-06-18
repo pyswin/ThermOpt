@@ -1,0 +1,60 @@
+{
+  "seed": 3029,
+  "config": "configs/atmplace_wl_extended.yaml",
+  "output_dir": "outputs/20260618_135243_atmplace_wl_extended/Case7",
+  "case": "Case7",
+  "source_path": "external/ATPlace_pub/cases/Case7",
+  "num_chiplets": 28,
+  "num_nets": 2816,
+  "optimizers": {
+    "atmplace": {
+      "optimizer": "atmplace",
+      "runtime_sec": 16.48501495894743,
+      "wirelength": 16831.760150580045,
+      "tmax": 30.657667863534485,
+      "top1": 30.59721619080264,
+      "top5": 30.355489954118873,
+      "thermal": 30.355489954118873,
+      "outline_penalty": 0.0,
+      "overlap_penalty": 0.0,
+      "total_cost": 0.34305333939694765,
+      "solver_success": true,
+      "solver_message": "spectral clump seed",
+      "solver_objective": 38946.99003124003,
+      "phases": [
+        {
+          "phase": "initial",
+          "wirelength": 49064.5570749101,
+          "wirelength_m": 49.064557074910105,
+          "total_cost": 16.00150545730258,
+          "overlap_penalty": 0.18751881821628227,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "spectral_seed",
+          "wirelength": 38946.99003124003,
+          "wirelength_m": 38.94699003124003,
+          "total_cost": 0.7937907188640689,
+          "overlap_penalty": 0.0,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "orientation_cgd",
+          "wirelength": 46134.96003288012,
+          "wirelength_m": 46.134960032880116,
+          "total_cost": 0.9402909713918913,
+          "overlap_penalty": 0.0,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "legalization",
+          "wirelength": 16831.760150580045,
+          "wirelength_m": 16.831760150580045,
+          "total_cost": 0.34305333939694765,
+          "overlap_penalty": 0.0,
+          "outline_penalty": 0.0
+        }
+      ]
+    }
+  }
+}

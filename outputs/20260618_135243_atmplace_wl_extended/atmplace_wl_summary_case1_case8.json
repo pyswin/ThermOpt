@@ -1,0 +1,570 @@
+{
+  "paper_reference": "ATMPlace arXiv 2511.17319 Table VI, ATMPlace WL-driven TWL/m column",
+  "outputs_used": [
+    "outputs/20260618_134928_wl_benchmark",
+    "outputs/20260618_135243_atmplace_wl_extended"
+  ],
+  "notes": [
+    "Case1-3 compare atplace and atmplace; atmplace currently reuses MILP seed on small cases, so values match atplace.",
+    "Case4-8 use atmplace fast spectral/clump seed to avoid full pairwise MILP; this is scalable but not yet competitive on all cases.",
+    "Thermal and warpage objectives are intentionally disabled; this is WL-only.",
+    "The local ATMPLACE.pdf is not the chiplet paper; ATMPlace reference values were extracted from arXiv 2511.17319."
+  ],
+  "methods": {
+    "Case1": {
+      "atplace": {
+        "runtime_sec": 9.015540209016763,
+        "wirelength": 11606.402766272717,
+        "twl_m": 11.606402766272717,
+        "paper_atmplace_twl_m": 11.973,
+        "delta_twl_m": -0.36659723372728337,
+        "delta_percent": -3.0618661465571146,
+        "ratio_to_paper": 0.9693813385344289,
+        "tmax": 55.78106758689961,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 3.947459643111668e-17,
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "selected_phase": "clump_milp",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 63626.55909594024,
+            "wirelength_m": 63.626559095940245,
+            "total_cost": 29.45062359585791,
+            "overlap_penalty": 0.35563279494822386,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "clump_milp",
+            "wirelength": 11606.402766272717,
+            "wirelength_m": 11.606402766272717,
+            "total_cost": 0.18241443402230872,
+            "overlap_penalty": 3.947459643111668e-17,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "analytical_refine",
+            "wirelength": 11606.402766272717,
+            "wirelength_m": 11.606402766272717,
+            "total_cost": 0.18241443402230872,
+            "overlap_penalty": 3.947459643111668e-17,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legal_perturb",
+            "wirelength": 15866.609313199966,
+            "wirelength_m": 15.866609313199966,
+            "total_cost": 0.24937085296841632,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      },
+      "atmplace": {
+        "runtime_sec": 7.247702874999959,
+        "wirelength": 11606.402766272717,
+        "twl_m": 11.606402766272717,
+        "paper_atmplace_twl_m": 11.973,
+        "delta_twl_m": -0.36659723372728337,
+        "delta_percent": -3.0618661465571146,
+        "ratio_to_paper": 0.9693813385344289,
+        "tmax": 55.78106758689961,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 3.947459643111668e-17,
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "selected_phase": "milp_seed",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 63626.55909594024,
+            "wirelength_m": 63.626559095940245,
+            "total_cost": 29.45062359585791,
+            "overlap_penalty": 0.35563279494822386,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "milp_seed",
+            "wirelength": 11606.402766272717,
+            "wirelength_m": 11.606402766272717,
+            "total_cost": 0.18241443402230872,
+            "overlap_penalty": 3.947459643111668e-17,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 54572.22495399966,
+            "wirelength_m": 54.572224953999665,
+            "total_cost": 0.857695681322514,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 15866.609313199966,
+            "wirelength_m": 15.866609313199966,
+            "total_cost": 0.24937085296841632,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    },
+    "Case2": {
+      "atplace": {
+        "runtime_sec": 9.927916457992978,
+        "wirelength": 16868.31991032026,
+        "twl_m": 16.86831991032026,
+        "paper_atmplace_twl_m": 15.408,
+        "delta_twl_m": 1.4603199103202602,
+        "delta_percent": 9.477673353584244,
+        "ratio_to_paper": 1.0947767335358425,
+        "tmax": 40.394054840262264,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 3.4857718400012905e-15,
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "selected_phase": "clump_milp",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 106053.39467431733,
+            "wirelength_m": 106.05339467431733,
+            "total_cost": 18.266621778657733,
+            "overlap_penalty": 0.21583277223322167,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "clump_milp",
+            "wirelength": 16868.31991032026,
+            "wirelength_m": 16.86831991032026,
+            "total_cost": 0.1590549737908087,
+            "overlap_penalty": 3.4857718400012905e-15,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "analytical_refine",
+            "wirelength": 16868.31991032026,
+            "wirelength_m": 16.86831991032026,
+            "total_cost": 0.1590549737908087,
+            "overlap_penalty": 3.4857718400012905e-15,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legal_perturb",
+            "wirelength": 32842.7068118401,
+            "wirelength_m": 32.8427068118401,
+            "total_cost": 0.30968086323589916,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      },
+      "atmplace": {
+        "runtime_sec": 9.837691374996211,
+        "wirelength": 16868.31991032026,
+        "twl_m": 16.86831991032026,
+        "paper_atmplace_twl_m": 15.408,
+        "delta_twl_m": 1.4603199103202602,
+        "delta_percent": 9.477673353584244,
+        "ratio_to_paper": 1.0947767335358425,
+        "tmax": 40.394054840262264,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 3.4857718400012905e-15,
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "selected_phase": "milp_seed",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 106053.39467431733,
+            "wirelength_m": 106.05339467431733,
+            "total_cost": 18.266621778657733,
+            "overlap_penalty": 0.21583277223322167,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "milp_seed",
+            "wirelength": 16868.31991032026,
+            "wirelength_m": 16.86831991032026,
+            "total_cost": 0.1590549737908087,
+            "overlap_penalty": 3.4857718400012905e-15,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 101744.09594191983,
+            "wirelength_m": 101.74409594191984,
+            "total_cost": 0.9593667063121265,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 34421.98369767985,
+            "wirelength_m": 34.42198369767985,
+            "total_cost": 0.32457220066729014,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    },
+    "Case3": {
+      "atplace": {
+        "runtime_sec": 25.921790790976956,
+        "wirelength": 31366.248807182637,
+        "twl_m": 31.36624880718264,
+        "paper_atmplace_twl_m": 32.35,
+        "delta_twl_m": -0.9837511928173619,
+        "delta_percent": -3.0409619561587693,
+        "ratio_to_paper": 0.9695903804384123,
+        "tmax": 50.23721189325255,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 0.0,
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "selected_phase": "clump_milp",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 160633.57462265,
+            "wirelength_m": 160.63357462265,
+            "total_cost": 15.795669699572443,
+            "overlap_penalty": 0.18494587124465553,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "clump_milp",
+            "wirelength": 31366.248807182637,
+            "wirelength_m": 31.36624880718264,
+            "total_cost": 0.19526583331576977,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "analytical_refine",
+            "wirelength": 31366.248807182637,
+            "wirelength_m": 31.36624880718264,
+            "total_cost": 0.19526583331576977,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legal_perturb",
+            "wirelength": 53083.0755128009,
+            "wirelength_m": 53.083075512800896,
+            "total_cost": 0.33046065019408444,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      },
+      "atmplace": {
+        "runtime_sec": 25.464326166023966,
+        "wirelength": 31366.248807182637,
+        "twl_m": 31.36624880718264,
+        "paper_atmplace_twl_m": 32.35,
+        "delta_twl_m": -0.9837511928173619,
+        "delta_percent": -3.0409619561587693,
+        "ratio_to_paper": 0.9695903804384123,
+        "tmax": 50.23721189325255,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 0.0,
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "selected_phase": "milp_seed",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 160633.57462265,
+            "wirelength_m": 160.63357462265,
+            "total_cost": 15.795669699572443,
+            "overlap_penalty": 0.18494587124465553,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "milp_seed",
+            "wirelength": 31366.248807182637,
+            "wirelength_m": 31.36624880718264,
+            "total_cost": 0.19526583331576977,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 215044.5418031994,
+            "wirelength_m": 215.0445418031994,
+            "total_cost": 1.3387272387380293,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 53083.0755128009,
+            "wirelength_m": 53.083075512800896,
+            "total_cost": 0.33046065019408444,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    },
+    "Case4": {
+      "atmplace": {
+        "runtime_sec": 24.32921462500235,
+        "wirelength": 167183.75894759796,
+        "twl_m": 167.18375894759797,
+        "paper_atmplace_twl_m": 46.982,
+        "delta_twl_m": 120.20175894759797,
+        "delta_percent": 255.8464070231109,
+        "ratio_to_paper": 3.558464070231109,
+        "tmax": 63.69662458132718,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 0.0,
+        "solver_success": true,
+        "solver_message": "spectral clump seed",
+        "selected_phase": "legalization",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 220234.17962031477,
+            "wirelength_m": 220.23417962031476,
+            "total_cost": 22.19752148143204,
+            "overlap_penalty": 0.2649690185179005,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "spectral_seed",
+            "wirelength": 206384.2388031999,
+            "wirelength_m": 206.3842388031999,
+            "total_cost": 0.9371126641605211,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 223845.27858479976,
+            "wirelength_m": 223.84527858479976,
+            "total_cost": 1.0163966327602307,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 167183.75894759796,
+            "wirelength_m": 167.18375894759797,
+            "total_cost": 0.7591181315989367,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    },
+    "Case5": {
+      "atmplace": {
+        "runtime_sec": 24.221562750055455,
+        "wirelength": 68594.59348940125,
+        "twl_m": 68.59459348940125,
+        "paper_atmplace_twl_m": 48.265,
+        "delta_twl_m": 20.329593489401248,
+        "delta_percent": 42.12077797451828,
+        "ratio_to_paper": 1.4212077797451828,
+        "tmax": 53.01877335956593,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 0.0,
+        "solver_success": true,
+        "solver_message": "spectral clump seed",
+        "selected_phase": "legalization",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 108435.99633615193,
+            "wirelength_m": 108.43599633615193,
+            "total_cost": 40.84198464248251,
+            "overlap_penalty": 0.4980248080310314,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "spectral_seed",
+            "wirelength": 127455.74312779988,
+            "wirelength_m": 127.45574312779989,
+            "total_cost": 1.1754006735243772,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 127455.74312779988,
+            "wirelength_m": 127.45574312779989,
+            "total_cost": 1.1754006735243772,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 68594.59348940125,
+            "wirelength_m": 68.59459348940125,
+            "total_cost": 0.6325813918540277,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    },
+    "Case6": {
+      "atmplace": {
+        "runtime_sec": 22.454786374990363,
+        "wirelength": 66437.06070960007,
+        "twl_m": 66.43706070960008,
+        "paper_atmplace_twl_m": 29.482,
+        "delta_twl_m": 36.955060709600076,
+        "delta_percent": 125.34787568550327,
+        "ratio_to_paper": 2.2534787568550327,
+        "tmax": 40.61717774249752,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 0.0,
+        "solver_success": true,
+        "solver_message": "spectral clump seed",
+        "selected_phase": "legalization",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 186274.7342358281,
+            "wirelength_m": 186.2747342358281,
+            "total_cost": 38.777315397196816,
+            "overlap_penalty": 0.4722164424649602,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "spectral_seed",
+            "wirelength": 168313.12000000066,
+            "wirelength_m": 168.31312000000068,
+            "total_cost": 0.9035746081747854,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 130041.1192432005,
+            "wirelength_m": 130.0411192432005,
+            "total_cost": 0.698114641133056,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 66437.06070960007,
+            "wirelength_m": 66.43706070960008,
+            "total_cost": 0.3566616856663407,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    },
+    "Case7": {
+      "atmplace": {
+        "runtime_sec": 16.48501495894743,
+        "wirelength": 16831.760150580045,
+        "twl_m": 16.831760150580045,
+        "paper_atmplace_twl_m": 12.523,
+        "delta_twl_m": 4.308760150580046,
+        "delta_percent": 34.40677274279363,
+        "ratio_to_paper": 1.3440677274279362,
+        "tmax": 30.657667863534485,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 0.0,
+        "solver_success": true,
+        "solver_message": "spectral clump seed",
+        "selected_phase": "legalization",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 49064.5570749101,
+            "wirelength_m": 49.064557074910105,
+            "total_cost": 16.00150545730258,
+            "overlap_penalty": 0.18751881821628227,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "spectral_seed",
+            "wirelength": 38946.99003124003,
+            "wirelength_m": 38.94699003124003,
+            "total_cost": 0.7937907188640689,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 46134.96003288012,
+            "wirelength_m": 46.134960032880116,
+            "total_cost": 0.9402909713918913,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 16831.760150580045,
+            "wirelength_m": 16.831760150580045,
+            "total_cost": 0.34305333939694765,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    },
+    "Case8": {
+      "atmplace": {
+        "runtime_sec": 20.42383616603911,
+        "wirelength": 25668.559956500183,
+        "twl_m": 25.668559956500182,
+        "paper_atmplace_twl_m": 9.001,
+        "delta_twl_m": 16.667559956500185,
+        "delta_percent": 185.17453567937102,
+        "ratio_to_paper": 2.85174535679371,
+        "tmax": 27.732809096547307,
+        "outline_penalty": 0.0,
+        "overlap_penalty": 0.0,
+        "solver_success": true,
+        "solver_message": "spectral clump seed",
+        "selected_phase": "legalization",
+        "phases": [
+          {
+            "phase": "initial",
+            "wirelength": 44814.88482046766,
+            "wirelength_m": 44.81488482046766,
+            "total_cost": 15.15241606695943,
+            "overlap_penalty": 0.17690520083699288,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "spectral_seed",
+            "wirelength": 34104.31996399993,
+            "wirelength_m": 34.10431996399993,
+            "total_cost": 0.761004298027872,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "orientation_cgd",
+            "wirelength": 33594.71978799997,
+            "wirelength_m": 33.59471978799997,
+            "total_cost": 0.7496330721942799,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          },
+          {
+            "phase": "legalization",
+            "wirelength": 25668.559956500183,
+            "wirelength_m": 25.668559956500182,
+            "total_cost": 0.5727686249631272,
+            "overlap_penalty": 0.0,
+            "outline_penalty": 0.0
+          }
+        ]
+      }
+    }
+  }
+}
