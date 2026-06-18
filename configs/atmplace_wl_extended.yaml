@@ -1,14 +1,16 @@
-seed: 17
+seed: 29
 output_root: outputs
-experiment_name: atplace_wl_reproduce
+experiment_name: atmplace_wl_extended
 
 case:
   source: atplace
   data_dir: external/ATPlace_pub/cases
   cases:
-    - Case1
-    - Case2
-    - Case3
+    - Case4
+    - Case5
+    - Case6
+    - Case7
+    - Case8
   unit_scale: 0.001
   initial_layout: random
 
@@ -27,16 +29,15 @@ objective:
   topk_percent: 0.05
   temperature_limit: 85.0
 
-atplace_wl:
-  milp_time_limit: 120
-  mip_rel_gap: 0.001
-  refine_steps: 800
+atmplace:
+  milp_chiplet_limit: 8
+  cgd_steps: 400
   learning_rate: 0.015
   wl_weight: 1.0
-  density_weight: 8000.0
+  density_weight: 9000.0
   outline_weight: 30000.0
-  legal_perturb_iterations: 5000
-  initial_anneal_temp: 0.4
-  final_anneal_temp: 0.002
+  legalize_candidates: 96
+  legalize_iterations: 1500
+  initial_anneal_temp: 0.25
+  final_anneal_temp: 0.001
   report_every: 100
-  verbose: false
