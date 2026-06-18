@@ -1,0 +1,109 @@
+{
+  "seed": 1017,
+  "config": "configs/wl_benchmark.yaml",
+  "output_dir": "outputs/20260618_134928_wl_benchmark/Case2",
+  "case": "Case2",
+  "source_path": "external/ATPlace_pub/cases/Case2",
+  "num_chiplets": 6,
+  "num_nets": 3520,
+  "optimizers": {
+    "atplace": {
+      "optimizer": "atplace",
+      "runtime_sec": 9.927916457992978,
+      "wirelength": 16868.31991032026,
+      "tmax": 40.394054840262264,
+      "top1": 40.35904366813097,
+      "top5": 40.21257424578267,
+      "thermal": 40.21257424578267,
+      "outline_penalty": 0.0,
+      "overlap_penalty": 3.4857718400012905e-15,
+      "total_cost": 0.1590549737908087,
+      "solver_success": true,
+      "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "solver_objective": 12081.119693119816,
+      "phases": [
+        {
+          "phase": "initial",
+          "wirelength": 106053.39467431733,
+          "wirelength_m": 106.05339467431733,
+          "total_cost": 18.266621778657733,
+          "overlap_penalty": 0.21583277223322167,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "clump_milp",
+          "wirelength": 16868.31991032026,
+          "wirelength_m": 16.86831991032026,
+          "total_cost": 0.1590549737908087,
+          "overlap_penalty": 3.4857718400012905e-15,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "analytical_refine",
+          "wirelength": 16868.31991032026,
+          "wirelength_m": 16.86831991032026,
+          "total_cost": 0.1590549737908087,
+          "overlap_penalty": 3.4857718400012905e-15,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "legal_perturb",
+          "wirelength": 32842.7068118401,
+          "wirelength_m": 32.8427068118401,
+          "total_cost": 0.30968086323589916,
+          "overlap_penalty": 0.0,
+          "outline_penalty": 0.0
+        }
+      ]
+    },
+    "atmplace": {
+      "optimizer": "atmplace",
+      "runtime_sec": 9.837691374996211,
+      "wirelength": 16868.31991032026,
+      "tmax": 40.394054840262264,
+      "top1": 40.35904366813097,
+      "top5": 40.21257424578267,
+      "thermal": 40.21257424578267,
+      "outline_penalty": 0.0,
+      "overlap_penalty": 3.4857718400012905e-15,
+      "total_cost": 0.1590549737908087,
+      "solver_success": true,
+      "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "solver_objective": 12081.119693119816,
+      "phases": [
+        {
+          "phase": "initial",
+          "wirelength": 106053.39467431733,
+          "wirelength_m": 106.05339467431733,
+          "total_cost": 18.266621778657733,
+          "overlap_penalty": 0.21583277223322167,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "milp_seed",
+          "wirelength": 16868.31991032026,
+          "wirelength_m": 16.86831991032026,
+          "total_cost": 0.1590549737908087,
+          "overlap_penalty": 3.4857718400012905e-15,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "orientation_cgd",
+          "wirelength": 101744.09594191983,
+          "wirelength_m": 101.74409594191984,
+          "total_cost": 0.9593667063121265,
+          "overlap_penalty": 0.0,
+          "outline_penalty": 0.0
+        },
+        {
+          "phase": "legalization",
+          "wirelength": 34421.98369767985,
+          "wirelength_m": 34.42198369767985,
+          "total_cost": 0.32457220066729014,
+          "overlap_penalty": 0.0,
+          "outline_penalty": 0.0
+        }
+      ]
+    }
+  }
+}
