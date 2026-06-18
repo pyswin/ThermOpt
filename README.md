@@ -84,23 +84,9 @@ loader 在 `src/thermopt/data/atplace.py`，读取 `.blocks/.nets/.power/.pl`，
 
 热、温度、warpage 以后可以作为 objective term 接入，但当前 benchmark 只看线长。
 
-### `nesterov`
-
-文件：`src/thermopt/optimizer/nesterov.py`
-
-这是参考 ePlace/DREAMPlace global placement 思路的 CPU/Torch 版本，不直接搬 DREAMPlace 的 CUDA 工程。当前实现用于验证 WL-only 方向：
-
-1. spectral 初始化；
-2. weighted-average smooth HPWL；
-3. bin density overflow penalty；
-4. Nesterov momentum 更新；
-5. sequence-pair legalization。
-
-这个方法适合后续接温度/热代理梯度。当前仍只比较线长。
-
 ## 运行 WL Benchmark
 
-默认跑 Case1-3，同时比较 `atplace`、`atmplace` 和 `nesterov`：
+默认跑 Case1-3，同时比较 `atplace` 和 `atmplace`：
 
 ```bash
 PYTHONPATH=src python -m thermopt.experiments.run_optimizer_comparison --config configs/wl_benchmark.yaml
@@ -118,7 +104,6 @@ outputs/<timestamp>_wl_benchmark/
 initial_layout.png
 final_layout_atplace.png
 final_layout_atmplace.png
-final_layout_nesterov.png
 metrics.csv
 summary.json
 optimizer_comparison_summary.png
@@ -147,7 +132,6 @@ PYTHONPATH=src pytest
 - ATPlace case loader；
 - pin-offset HPWL 和四方向旋转；
 - `atplace`/`atmplace` 小 case 合法布局；
-- `nesterov` 小 case 合法布局；
 - MILP、pointwise loader、旧 SA/GA/RL 基础流程。
 
 ## 当前限制
