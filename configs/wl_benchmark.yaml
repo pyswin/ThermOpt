@@ -56,3 +56,21 @@ atmplace:
   final_anneal_temp: 0.001
   report_every: 100
   verbose: false
+
+nesterov:
+  initialization: spectral
+  rotation_mode: initial
+  steps: 600
+  learning_rate: 0.04
+  momentum: 0.92
+  wl_weight: 1.0
+  density_weight: 2500.0
+  density_ramp: 2.0
+  density_bins_x: 16
+  density_bins_y: 16
+  density_sigma: 1.5
+  outline_weight: 20000.0
+  overlap_weight: 1000.0
+  legalize_candidates: 64
+  wa_gamma: 0.35
+  report_every: 100
