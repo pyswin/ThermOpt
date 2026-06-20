@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from thermopt.data.case_generator import random_initial_layout
+from thermopt.data.case_config import get_case_outline
 from thermopt.data.inputs import CaseInput
 from thermopt.layout.objects import Chiplet, FloorplanCase, Layout, Net, Placement
 
@@ -107,6 +108,9 @@ def _parse_pl_layout(path: Path, case: FloorplanCase, scale: float) -> Layout:
 def load_atplace_case(case_dir: Path, config: dict, seed: int) -> CaseInput:
     case_name = case_dir.name
     scale = float(config.get("unit_scale", 0.001))
+    config_name = str(config.get("config_name", "reproduce.json"))
+    config_mode = str(config.get("config_mode", "thermal"))
+    use_case_config = bool(config.get("use_case_config", True))
     blocks_path = case_dir / f"{case_name}.blocks"
     nets_path = case_dir / f"{case_name}.nets"
     power_path = case_dir / f"{case_name}.power"
@@ -130,6 +134,15 @@ def load_atplace_case(case_dir: Path, config: dict, seed: int) -> CaseInput:
         outline_width=raw_outline[0] * scale,
         outline_height=raw_outline[1] * scale,
     )
+    if use_case_config:
+        outline = get_case_outline(case_dir, config_name=config_name, mode=config_mode)
+        if outline is not None:
+            case = FloorplanCase(
+                chiplets=case.chiplets,
+                nets=case.nets,
+                outline_width=outline[0] * scale,
+                outline_height=outline[1] * scale,
+            )
 
     layout_mode = str(config.get("initial_layout", "random")).lower()
     if layout_mode == "pl":

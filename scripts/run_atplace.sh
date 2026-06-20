@@ -13,4 +13,4 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
   PYTHON_BIN="$(command -v python3)"
 fi
 
-PYTHONPATH=src "$PYTHON_BIN" -m thermopt.experiments.run_optimizer_comparison --config configs/wl_benchmark.yaml
+PYTHONPATH=src "$PYTHON_BIN" -m thermopt.experiments.run_optimizer_comparison --config configs/atplace_benchmark.yaml

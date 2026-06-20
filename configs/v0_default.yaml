@@ -17,6 +17,9 @@ case:
   net_max_degree: 4
 
 thermal:
+  backend: hotspot
+  hotspot_binary: external/ATPlace_pub/thermal/hotspot
+  hotspot_allow_fallback: true
   grid_size: [100, 80]
   ambient: 25.0
   scale: 1.8

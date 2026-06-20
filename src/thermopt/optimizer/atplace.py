@@ -76,7 +76,7 @@ def _solve_clump_milp(case: FloorplanCase, config: dict) -> tuple[Layout, bool, 
         from scipy.optimize import Bounds, LinearConstraint, milp
         from scipy.sparse import lil_matrix
     except ImportError as exc:
-        raise RuntimeError("atplace optimizer requires scipy.optimize.milp") from exc
+        raise RuntimeError("atplace_wl optimizer requires scipy.optimize.milp") from exc
 
     time_limit = float(config.get("milp_time_limit", 120.0))
     mip_rel_gap = float(config.get("mip_rel_gap", 0.001))

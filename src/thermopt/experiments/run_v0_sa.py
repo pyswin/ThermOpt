@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import shutil
 import time
@@ -8,7 +9,6 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
 import yaml
 
 from thermopt.data.atplace import load_atplace_cases
@@ -18,7 +18,7 @@ from thermopt.data.pointwise import load_pointwise_cases
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
 from thermopt.optimizer.simulated_annealing import optimize
-from thermopt.thermal.heuristic import simulate_temperature
+from thermopt.thermal.backend import build_thermal_backend
 
 
 def deep_update(base: dict, updates: dict) -> dict:
@@ -62,7 +62,8 @@ def load_inputs(config: dict, seed: int) -> list[CaseInput]:
 def run_single_case(config: dict, config_path: Path, case_input: CaseInput, output_dir: Path, seed: int) -> dict:
     case = case_input.case
     initial_layout = case_input.layout
-    initial_temperature = simulate_temperature(case, initial_layout, config["thermal"])
+    thermal_backend = build_thermal_backend(case, config["thermal"], work_dir=output_dir / "_thermal" / case_input.name)
+    initial_temperature = thermal_backend.simulate(case, initial_layout)
     save_layout_figure(case, initial_layout, output_dir / "initial_layout.png", "Initial layout")
     save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
 
@@ -76,13 +77,22 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         "source_path": str(case_input.source_path) if str(case_input.source_path) else None,
         "num_chiplets": len(case.chiplets),
         "num_nets": len(case.nets),
+        "thermal": {
+            "requested_backend": str(config["thermal"].get("backend", "heuristic")),
+            "runtime_mode": getattr(thermal_backend, "runtime_mode", thermal_backend.name),
+        },
         "experiments": {},
     }
 
     for index, experiment in enumerate(config.get("experiments", [])):
         exp_name = experiment["name"]
         exp_config = deep_update(config, experiment)
-        objective = Objective(case, exp_config["thermal"], exp_config["objective"], initial_layout)
+        exp_backend = thermal_backend if exp_config["thermal"] == config["thermal"] else build_thermal_backend(
+            case,
+            exp_config["thermal"],
+            work_dir=output_dir / "_thermal" / exp_name,
+        )
+        objective = Objective(case, exp_config["thermal"], exp_config["objective"], initial_layout, thermal_backend=exp_backend)
 
         started = time.perf_counter()
         result = optimize(
@@ -94,7 +104,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         )
         runtime = time.perf_counter() - started
 
-        final_temperature = simulate_temperature(case, result.best_layout, exp_config["thermal"])
+        final_temperature = exp_backend.simulate(case, result.best_layout)
         save_layout_figure(case, result.best_layout, output_dir / f"final_layout_{exp_name}.png", f"Final layout: {exp_name}")
         save_temperature_figure(
             final_temperature,
@@ -107,6 +117,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
             "experiment": exp_name,
             "runtime_sec": runtime,
             "accepted_ratio": result.accepted_ratio,
+            "thermal_backend": getattr(exp_backend, "runtime_mode", exp_backend.name),
             **result.best_cost.metrics,
         }
         rows.append(row)
@@ -122,7 +133,21 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
 
     if final_results:
         save_final_summary(case, final_results, output_dir / "final_summary.png")
-    pd.DataFrame(rows).to_csv(output_dir / "metrics.csv", index=False)
+    if rows:
+        fieldnames: list[str] = []
+        seen: set[str] = set()
+        for row in rows:
+            for key in row.keys():
+                if key not in seen:
+                    seen.add(key)
+                    fieldnames.append(key)
+        with (output_dir / "metrics.csv").open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
+    else:
+        (output_dir / "metrics.csv").write_text("", encoding="utf-8")
     with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     return summary

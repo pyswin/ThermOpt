@@ -10,6 +10,14 @@ from thermopt.layout.objects import FloorplanCase, Layout, Placement
 from thermopt.objective.cost import CostResult
 
 
+MOVE_WEIGHTS = {
+    "translate": 0.45,
+    "swap": 0.20,
+    "rotate": 0.15,
+    "perturb": 0.20,
+}
+
+
 @dataclass(frozen=True)
 class SAResult:
     best_layout: Layout
@@ -38,6 +46,7 @@ def optimize(
     final_temp = float(config.get("final_anneal_temp", 0.01))
     move_scale = float(config.get("move_scale", 10.0))
     report_every = max(1, int(config.get("report_every", 10)))
+    allow_rotate_move = bool(config.get("allow_rotate_move", False))
 
     current_layout = initial_layout
     current_cost = objective(current_layout)
@@ -49,7 +58,7 @@ def optimize(
     for step in range(iterations):
         frac = step / max(1, iterations - 1)
         anneal_temp = initial_temp * ((final_temp / initial_temp) ** frac)
-        candidate = propose_move(case, current_layout, rng, move_scale)
+        candidate = propose_move(case, current_layout, rng, move_scale, allow_rotate_move=allow_rotate_move)
         candidate_cost = objective(candidate)
         delta = candidate_cost.total - current_cost.total
         if delta <= 0.0 or rng.random() < exp(-delta / max(anneal_temp, 1e-12)):
@@ -73,8 +82,24 @@ def optimize(
     )
 
 
-def propose_move(case: FloorplanCase, layout: Layout, rng: np.random.Generator, move_scale: float) -> Layout:
-    move = str(rng.choice(["translate", "swap", "rotate", "perturb"], p=[0.45, 0.2, 0.15, 0.2]))
+def available_moves(allow_rotate_move: bool) -> tuple[list[str], list[float]]:
+    moves = [(name, weight) for name, weight in MOVE_WEIGHTS.items() if allow_rotate_move or name != "rotate"]
+    names = [name for name, _ in moves]
+    weights = [weight for _, weight in moves]
+    total = sum(weights)
+    probs = [weight / total for weight in weights]
+    return names, probs
+
+
+def propose_move(
+    case: FloorplanCase,
+    layout: Layout,
+    rng: np.random.Generator,
+    move_scale: float,
+    allow_rotate_move: bool = True,
+) -> Layout:
+    names, probs = available_moves(allow_rotate_move)
+    move = str(rng.choice(names, p=probs))
     return propose_named_move(case, layout, rng, move_scale, move)
 
 
