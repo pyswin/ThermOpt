@@ -66,6 +66,16 @@ def _grid_size(config: dict) -> tuple[int, int]:
     return 100, 80
 
 
+def _next_power_of_two(value: int) -> int:
+    value = max(1, int(value))
+    return 1 << (value - 1).bit_length()
+
+
+def _hotspot_grid_size(config: dict) -> tuple[int, int]:
+    rows, cols = _grid_size(config)
+    return _next_power_of_two(rows), _next_power_of_two(cols)
+
+
 def _hotspot_template_path() -> Path:
     repo_candidate = _repo_root() / "external" / "ATPlace_pub" / "thermal" / "hotspot.config"
     if repo_candidate.is_file():
@@ -98,7 +108,7 @@ def _render_hotspot_config(config: dict, case: FloorplanCase, workspace: Path) -
         raise FileNotFoundError(f"missing HotSpot template: {template_path}")
 
     lines = template_path.read_text(encoding="utf-8").splitlines(keepends=True)
-    grid_x, grid_y = _grid_size(config)
+    grid_x, grid_y = _hotspot_grid_size(config)
     ambient_k = float(config.get("ambient", 25.0)) + 273.15
     thermal_threshold = float(config.get("thermal_threshold", ambient_k + 80.0))
     spreader_size = float(config.get("spreader_size", (case.outline_width + case.outline_height) / 1000.0))
@@ -257,129 +267,39 @@ def _fill_space(
     occupied: list[_FlpItem],
     ws_tail: str = "",
 ) -> list[_FlpItem]:
+    eps = 1e-5
     ws: list[_FlpItem] = []
     ws_n = 0
-    sep_n = 16
 
-    def cut_vertical(cur_list: list[_FlpItem], xst: float, xed: float, yst: float, yed: float) -> None:
-        nonlocal ws_n, sep_n, ws
-        if xed - xst < 1e-5 or yed - yst < 1e-5:
-            return
-        if cur_list == []:
-            ws.append(_FlpItem(f"WS_{ws_n}", xed - xst, yed - yst, xst, yst, ws_tail))
+    def _covers(item: _FlpItem, x0: float, x1: float, y0: float, y1: float) -> bool:
+        return (
+            x0 >= item.x - eps
+            and y0 >= item.y - eps
+            and x1 <= item.x + item.width + eps
+            and y1 <= item.y + item.height + eps
+        )
+
+    xs = {float(width_st), float(width_ed)}
+    ys = {float(height_st), float(height_ed)}
+    for item in occupied:
+        xs.add(max(float(width_st), float(item.x)))
+        xs.add(min(float(width_ed), float(item.x + item.width)))
+        ys.add(max(float(height_st), float(item.y)))
+        ys.add(min(float(height_ed), float(item.y + item.height)))
+    x_edges = sorted(xs)
+    y_edges = sorted(ys)
+
+    for x0, x1 in zip(x_edges, x_edges[1:]):
+        if x1 - x0 < eps:
+            continue
+        for y0, y1 in zip(y_edges, y_edges[1:]):
+            if y1 - y0 < eps:
+                continue
+            if any(_covers(item, x0, x1, y0, y1) for item in occupied):
+                continue
+            ws.append(_FlpItem(f"WS_{ws_n}", x1 - x0, y1 - y0, x0, y0, ws_tail))
             ws_n += 1
-            return
-        if len(cur_list) == 1:
-            item = cur_list[0]
-            if (
-                item.x - xst < 1e-5
-                and item.y - yst < 1e-5
-                and xed - (item.x + item.width) < 1e-5
-                and yed - (item.y + item.height) < 1e-5
-            ):
-                return
 
-        cur_list = sorted(cur_list, key=lambda item: (item.y, item.x))
-        cutlines = [xst]
-        for item in cur_list:
-            if item.y - yst < 1e-5:
-                if item.x - xst >= 1e-5:
-                    cutlines.append(item.x)
-                if xed - (item.x + item.width) >= 1e-5:
-                    cutlines.append(item.x + item.width)
-        cutlines.append(xed)
-        cutlines = sorted(set(cutlines))
-
-        if len(cutlines) == 2:
-            ws.append(_FlpItem(f"WS_{ws_n}", xed - xst, cur_list[0].y - yst, xst, yst, ws_tail))
-            ws_n += 1
-            cut_vertical(cur_list, xst, xed, cur_list[0].y, yed)
-            return
-
-        for index in range(1, len(cutlines)):
-            left_list: list[_FlpItem] = []
-            right_list: list[_FlpItem] = []
-            for item in cur_list:
-                if (item.x + item.width) - cutlines[index] < 1e-5:
-                    left_list.append(item)
-                elif (cutlines[index] - item.x >= 1e-5) and ((item.x + item.width) - cutlines[index] >= 1e-5):
-                    left_list.append(_FlpItem(f"Unit_{sep_n}", cutlines[index] - item.x, item.height, item.x, item.y))
-                    right_list.append(
-                        _FlpItem(
-                            f"Unit_{sep_n + 1}",
-                            item.x + item.width - cutlines[index],
-                            item.height,
-                            cutlines[index],
-                            item.y,
-                        )
-                    )
-                    sep_n += 2
-                else:
-                    right_list.append(item)
-
-            cur_list = right_list
-            cut_horizontal(left_list, cutlines[index - 1], cutlines[index], yst, yed)
-
-    def cut_horizontal(cur_list: list[_FlpItem], xst: float, xed: float, yst: float, yed: float) -> None:
-        nonlocal ws_n, sep_n, ws
-        if xed - xst < 1e-5 or yed - yst < 1e-5:
-            return
-        if cur_list == []:
-            ws.append(_FlpItem(f"WS_{ws_n}", xed - xst, yed - yst, xst, yst, ws_tail))
-            ws_n += 1
-            return
-        if len(cur_list) == 1:
-            item = cur_list[0]
-            if (
-                item.x - xst < 1e-5
-                and item.y - yst < 1e-5
-                and xed - (item.x + item.width) < 1e-5
-                and yed - (item.y + item.height) < 1e-5
-            ):
-                return
-
-        cur_list = sorted(cur_list, key=lambda item: (item.x, item.y))
-        cutlines = [yst]
-        for item in cur_list:
-            if item.x - xst < 1e-5:
-                if item.y - yst >= 1e-5:
-                    cutlines.append(item.y)
-                if yed - (item.y + item.height) >= 1e-5:
-                    cutlines.append(item.y + item.height)
-        cutlines.append(yed)
-        cutlines = sorted(cutlines)
-
-        if len(cutlines) == 2:
-            ws.append(_FlpItem(f"WS_{ws_n}", cur_list[0].x - xst, yed - yst, xst, yst, ws_tail))
-            ws_n += 1
-            cut_horizontal(cur_list, cur_list[0].x, xed, yst, yed)
-            return
-
-        for index in range(1, len(cutlines)):
-            down_list: list[_FlpItem] = []
-            up_list: list[_FlpItem] = []
-            for item in cur_list:
-                if (item.y + item.height) - cutlines[index] < 1e-5:
-                    down_list.append(item)
-                elif (cutlines[index] - item.y >= 1e-5) and ((item.y + item.height) - cutlines[index] >= 1e-5):
-                    down_list.append(_FlpItem(f"Unit_{sep_n}", item.width, cutlines[index] - item.y, item.x, item.y))
-                    up_list.append(
-                        _FlpItem(
-                            f"Unit_{sep_n + 1}",
-                            item.width,
-                            item.y + item.height - cutlines[index],
-                            item.x,
-                            cutlines[index],
-                        )
-                    )
-                    sep_n += 2
-                else:
-                    up_list.append(item)
-
-            cur_list = up_list
-            cut_vertical(down_list, xst, xed, cutlines[index - 1], cutlines[index])
-
-    cut_vertical([item for item in occupied], float(width_st), float(width_ed), float(height_st), float(height_ed))
     return ws
 
 
@@ -603,7 +523,7 @@ class HotSpotBackend:
             )
             if not grid_file.exists():
                 raise FileNotFoundError(f"HotSpot did not produce grid output: {grid_file}")
-            temp = _parse_grid_steady(grid_file, _grid_size(self.config))
+            temp = _parse_grid_steady(grid_file, _hotspot_grid_size(self.config))
             temp = _resample_grid(temp, _grid_size(self.config))
         except Exception:
             if bool(self.config.get("hotspot_required", False)) or not bool(self.config.get("hotspot_allow_fallback", True)):

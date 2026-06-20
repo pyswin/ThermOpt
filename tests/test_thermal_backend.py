@@ -116,7 +116,7 @@ def test_hotspot_floorplan_expands_outline_and_uses_absolute_paths(tmp_path: Pat
     assert not any(line.startswith("Edge_") for line in chip_lines)
 
 
-def test_hotspot_config_uses_exact_rectangular_grid(tmp_path: Path) -> None:
+def test_hotspot_config_rounds_grid_to_powers_of_two(tmp_path: Path) -> None:
     case = FloorplanCase(
         chiplets=(Chiplet("A", 4.0, 4.0, 10.0),),
         nets=(),
@@ -138,5 +138,5 @@ def test_hotspot_config_uses_exact_rectangular_grid(tmp_path: Path) -> None:
     config_text = config_path.read_text(encoding="utf-8")
     grid_rows_line = next(line for line in config_text.splitlines() if "-grid_rows" in line)
     grid_cols_line = next(line for line in config_text.splitlines() if "-grid_cols" in line)
-    assert grid_rows_line.strip().endswith("12")
-    assert grid_cols_line.strip().endswith("10")
+    assert grid_rows_line.strip().endswith("16")
+    assert grid_cols_line.strip().endswith("16")

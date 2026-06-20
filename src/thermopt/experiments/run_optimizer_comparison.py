@@ -14,7 +14,7 @@ from thermopt.data.inputs import CaseInput
 from thermopt.experiments.run_v0_sa import load_inputs
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
-from thermopt.optimizer import atplace, atplace_wl, atmplace, continuous_wl, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
+from thermopt.optimizer import atplace, atmplace, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
 from thermopt.thermal.backend import build_thermal_backend
 
 
@@ -54,8 +54,6 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         runs.append(("atplace", atplace.optimize, config["atplace"], seed + 700))
     if "atmplace" in config:
         runs.append(("atmplace", atmplace.optimize, config["atmplace"], seed + 800))
-    if "atplace_wl" in config:
-        runs.append(("atplace_wl", atplace_wl.optimize, config["atplace_wl"], seed + 900))
 
     rows: list[dict] = []
     final_results: list[dict] = []

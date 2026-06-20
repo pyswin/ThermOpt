@@ -14,7 +14,7 @@ thermal:
   backend: hotspot
   hotspot_binary: external/ATPlace_pub/thermal/hotspot
   hotspot_allow_fallback: true
-  grid_size: [100, 100]
+  grid_size: [64, 64]
   ambient: 25.0
   scale: 0.05
   sigma_factor: 1.0
