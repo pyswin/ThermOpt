@@ -107,7 +107,7 @@ thermal:
 - `backend: hotspot` uses the vendored HotSpot binary when available.
 - `hotspot_allow_fallback: true` keeps the code runnable if HotSpot is missing.
 - Set `hotspot_required: true` in a script or config if you want to force real HotSpot evaluation.
-- `thermal.grid_size` is used as-is for HotSpot `grid_rows` and `grid_cols`; rectangular grids are supported.
+- `thermal.grid_size` is the target output resolution. HotSpot grid inputs are rounded up per axis to the next power of two, then resampled back to the requested size.
 
 ## Objective
 
