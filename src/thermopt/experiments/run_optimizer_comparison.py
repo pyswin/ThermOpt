@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import shutil
 import time
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
 import yaml
 
 from thermopt.data.inputs import CaseInput
 from thermopt.experiments.run_v0_sa import load_inputs
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
-from thermopt.optimizer import atmplace, atplace, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
-from thermopt.thermal.heuristic import simulate_temperature
+from thermopt.optimizer import atplace, atplace_wl, atmplace, continuous_wl, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
+from thermopt.thermal.backend import build_thermal_backend
 
 
 def load_config(path: Path) -> dict:
@@ -33,8 +33,9 @@ def make_output_dir(config: dict) -> Path:
 def run_single_case(config: dict, config_path: Path, case_input: CaseInput, output_dir: Path, seed: int) -> dict:
     case = case_input.case
     initial_layout = case_input.layout
-    objective = Objective(case, config["thermal"], config["objective"], initial_layout)
-    initial_temperature = simulate_temperature(case, initial_layout, config["thermal"])
+    thermal_backend = build_thermal_backend(case, config["thermal"], work_dir=output_dir / "_thermal")
+    objective = Objective(case, config["thermal"], config["objective"], initial_layout, thermal_backend=thermal_backend)
+    initial_temperature = thermal_backend.simulate(case, initial_layout)
     save_layout_figure(case, initial_layout, output_dir / "initial_layout.png", "Initial layout")
     save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
 
@@ -53,6 +54,8 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         runs.append(("atplace", atplace.optimize, config["atplace"], seed + 700))
     if "atmplace" in config:
         runs.append(("atmplace", atmplace.optimize, config["atmplace"], seed + 800))
+    if "atplace_wl" in config:
+        runs.append(("atplace_wl", atplace_wl.optimize, config["atplace_wl"], seed + 900))
 
     rows: list[dict] = []
     final_results: list[dict] = []
@@ -64,6 +67,10 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         "source_path": str(case_input.source_path) if str(case_input.source_path) else None,
         "num_chiplets": len(case.chiplets),
         "num_nets": len(case.nets),
+        "thermal": {
+            "requested_backend": str(config["thermal"].get("backend", "heuristic")),
+            "runtime_mode": getattr(thermal_backend, "runtime_mode", thermal_backend.name),
+        },
         "optimizers": {},
     }
 
@@ -72,7 +79,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         started = time.perf_counter()
         result = optimizer(case, initial_layout, objective, optimizer_config, optimizer_seed)
         runtime = time.perf_counter() - started
-        final_temperature = simulate_temperature(case, result.best_layout, config["thermal"])
+        final_temperature = thermal_backend.simulate(case, result.best_layout)
 
         save_layout_figure(case, result.best_layout, output_dir / f"final_layout_{name}.png", f"Final layout: {name}")
         save_temperature_figure(final_temperature, output_dir / f"final_temperature_{name}.png", f"Final temperature: {name}")
@@ -117,7 +124,21 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         )
 
     save_final_summary(case, final_results, output_dir / "optimizer_comparison_summary.png", "Optimizer comparison")
-    pd.DataFrame(rows).to_csv(output_dir / "metrics.csv", index=False)
+    if rows:
+        fieldnames: list[str] = []
+        seen: set[str] = set()
+        for row in rows:
+            for key in row.keys():
+                if key not in seen:
+                    seen.add(key)
+                    fieldnames.append(key)
+        with (output_dir / "metrics.csv").open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
+    else:
+        (output_dir / "metrics.csv").write_text("", encoding="utf-8")
     with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     print(f"[compare] saved outputs to {output_dir}")
@@ -152,14 +173,25 @@ def run(config_path: Path) -> Path:
         for case_name, summary in summaries.items():
             for optimizer, row in summary["optimizers"].items():
                 rows.append({"case": case_name, "optimizer": optimizer, **row})
-        pd.DataFrame(rows).to_csv(output_dir / "metrics.csv", index=False)
+        fieldnames: list[str] = []
+        seen: set[str] = set()
+        for row in rows:
+            for key in row.keys():
+                if key not in seen:
+                    seen.add(key)
+                    fieldnames.append(key)
+        with (output_dir / "metrics.csv").open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
         print(f"[compare] saved aggregate outputs to {output_dir}")
     return output_dir
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Compare SA, GA, and RL optimizers.")
-    parser.add_argument("--config", type=Path, default=Path("configs/optimizer_comparison.yaml"))
+    parser = argparse.ArgumentParser(description="Compare ATPlace-family optimizers.")
+    parser.add_argument("--config", type=Path, default=Path("configs/wl_benchmark.yaml"))
     args = parser.parse_args()
     run(args.config)
 

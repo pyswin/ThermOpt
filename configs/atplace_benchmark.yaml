@@ -1,14 +1,12 @@
 seed: 17
 output_root: outputs
-experiment_name: wl_benchmark
+experiment_name: atplace_benchmark
 
 case:
   source: atplace
   data_dir: external/ATPlace_pub/cases
   cases:
     - Case1
-    - Case2
-    - Case3
   unit_scale: 0.001
   initial_layout: random
 
@@ -23,7 +21,7 @@ thermal:
 
 objective:
   alpha: 1.0
-  beta: 0.0
+  beta: 1.0
   gamma: 50.0
   delta: 80.0
   thermal_mode: topk
@@ -41,21 +39,5 @@ atplace:
   legal_perturb_iterations: 1000
   initial_anneal_temp: 0.4
   final_anneal_temp: 0.002
-  report_every: 100
-  verbose: false
-
-atmplace:
-  milp_chiplet_limit: 8
-  milp_time_limit: 60
-  mip_rel_gap: 0.001
-  cgd_steps: 300
-  learning_rate: 0.015
-  wl_weight: 1.0
-  density_weight: 9000.0
-  outline_weight: 30000.0
-  legalize_candidates: 64
-  legalize_iterations: 1000
-  initial_anneal_temp: 0.25
-  final_anneal_temp: 0.001
   report_every: 100
   verbose: false

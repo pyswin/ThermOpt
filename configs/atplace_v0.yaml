@@ -13,6 +13,9 @@ case:
   initial_layout: random
 
 thermal:
+  backend: hotspot
+  hotspot_binary: external/ATPlace_pub/thermal/hotspot
+  hotspot_allow_fallback: true
   grid_size: [100, 100]
   ambient: 25.0
   scale: 0.05

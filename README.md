@@ -1,142 +1,156 @@
 # ThermOpt
 
-ThermOpt 是一个 chiplet placement 实验仓库。当前主线目标是先把 **WL-only placement** 做稳，再接真实热仿真或训练好的热代理模型。
+ThermOpt is a chiplet floorplanning sandbox with two independent flows that share the same thermal backend:
 
-目前热仿真仍是启发式 Gaussian thermal field，只用于保持流程完整；和论文表格对比时，主要看 `TWL/m`。
+- dataset generation: `case -> random layout/power/rotation -> thermal backend -> pointwise/grid/json`
+- optimization: `case + initial layout -> wirelength + temperature -> cost -> optimizer updates layout`
 
-## 目录结构
+The dataset path and the optimization path are separate consumers of `ThermalBackend`. They do not depend on each other in execution order.
 
-```text
-configs/                  实验配置
-outputs/                  实验输出，默认不提交
-src/thermopt/data/         case 读取与生成
-src/thermopt/layout/       布局对象、HPWL、合法性、可视化
-src/thermopt/objective/    指标与 scalar objective
-src/thermopt/optimizer/    placement 优化方法
-src/thermopt/thermal/      当前启发式热模型，后续接 HotSpot/代理模型
-src/thermopt/experiments/  实验入口
-tests/                    回归测试
-```
+The ATPlace benchmark cases are vendored under `external/ATPlace_pub/cases/`. The default HotSpot binary is vendored at `external/ATPlace_pub/thermal/hotspot`.
 
-本地数据目录约定：
+## Supported Optimizers
 
-```text
-external/ATPlace_pub/      ATPlace2.5D 官方公开 case 和加密 runner
-pointwise/                 热代理模型训练数据
-```
+The current supported, non-neural optimizers are:
 
-`pointwise/`、`outputs/` 默认不提交。`external/ATPlace_pub` 作为当前 benchmark 依赖会提交必要源码和 case 数据，但不提交它自己的 `.git`、缓存和运行结果。
+- `simulated_annealing`
+- `genetic_algorithm`
+- `sequence_pair`
+- `milp_wl`
+- `atplace`
+- `atmplace`
 
-## 安装
+These are the optimizers to use for the current project setup. `SA`, `atplace`, and `atmplace` are the main paths to keep in mind.
+
+The repository still contains older experimental modules, but the quick-start path below does not rely on RL or other neural-network optimizers.
+
+## Install
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-本地开发直接用：
+`scipy` is required for `milp_wl`, `atplace`, and `atmplace`. The default workflows do not require `torch`.
+
+## Quick Start
+
+1. Run a syntax smoke test:
 
 ```bash
-PYTHONPATH=src pytest
+python3 -m compileall src tests scripts
 ```
 
-## 数据
-
-主 benchmark 使用 ATPlace2.5D 公开 case：
-
-```bash
-mkdir -p external
-git clone --depth 1 https://github.com/Brilight/ATPlace_pub.git external/ATPlace_pub
-```
-
-loader 在 `src/thermopt/data/atplace.py`，读取 `.blocks/.nets/.power/.pl`，并修正为论文 Table 3 的 interposer 尺寸。`pointwise/` 只作为热模型训练数据，不作为主 placement benchmark。
-
-## 当前优化方法
-
-`src/thermopt/optimizer/` 里现在保留两个主要 WL-only 方法：
-
-### `atplace`
-
-文件：`src/thermopt/optimizer/atplace.py`
-
-这是我们自己的可读实现，参考 ATPlace2.5D 的 WL-driven 思路：
-
-1. 按 chiplet pair 聚合 net clump；
-2. 用四方向 MILP 初始化，支持 0/90/180/270；
-3. 连续优化 WL + density/overlap + outline；
-4. sequence-pair 合法化/扰动；
-5. 从所有阶段选择 best legal layout。
-
-说明：ATPlace_pub 的核心 placement kernel 是 PyArmor 加密模块，不能直接合并成可维护源码。官方 runner 仍可作为 external baseline，但推荐 Gurobi 环境。
-
-### `atmplace`
-
-文件：`src/thermopt/optimizer/atmplace.py`
-
-这是参考 ATMPlace 论文优化算法部分的 WL-only 版本，不包含热应力/warpage 目标。当前实现重点参考：
-
-1. orientation-aware 初始化；
-2. 连续解析优化；
-3. density/overflow 权重调度；
-4. legalization；
-5. 大 case 默认避免全 pairwise MILP，改用更轻的 spectral/clump seed。
-
-热、温度、warpage 以后可以作为 objective term 接入，但当前 benchmark 只看线长。
-
-## 运行 WL Benchmark
-
-默认跑 Case1-3，同时比较 `atplace` 和 `atmplace`：
-
-```bash
-PYTHONPATH=src python -m thermopt.experiments.run_optimizer_comparison --config configs/wl_benchmark.yaml
-```
-
-输出在：
-
-```text
-outputs/<timestamp>_wl_benchmark/
-```
-
-每个 case 会有：
-
-```text
-initial_layout.png
-final_layout_atplace.png
-final_layout_atmplace.png
-metrics.csv
-summary.json
-optimizer_comparison_summary.png
-```
-
-如果要跑更多 case，修改 `configs/wl_benchmark.yaml` 里的 `case.cases`。Case9/Case10 对 MILP 类方法较重，建议先用 `atmplace` 的 spectral seed 或降低迭代预算。
-
-## 旧流程
-
-随机 case 的 V0 流程还保留：
+2. Run the default SA flow:
 
 ```bash
 bash scripts/run_v0.sh
 ```
 
-它主要用于验证热模型、objective 和可视化链路，不用于论文线长对比。
+This uses `configs/v0_default.yaml`, which runs SA on synthetic random cases.
 
-## 测试
+3. Run the ATPlace-family benchmark:
 
 ```bash
-PYTHONPATH=src pytest
+bash scripts/run_optimizer_comparison.sh
 ```
 
-测试覆盖：
+This uses `configs/wl_benchmark.yaml`, which runs the ATPlace-style optimizers on the vendored ATPlace cases.
 
-- ATPlace case loader；
-- pin-offset HPWL 和四方向旋转；
-- `atplace`/`atmplace` 小 case 合法布局；
-- MILP、pointwise loader、旧 SA/GA/RL 基础流程。
+4. Run the `atplace`-only benchmark:
 
-## 当前限制
+```bash
+bash scripts/run_atplace.sh
+```
 
-- 热仿真还没有接 HotSpot 或训练好的代理模型。
-- `atmplace` 只参考优化算法，不实现论文里的 thermo-mechanical objective。
-- 官方 ATPlace_pub 核心代码是加密 kernel；本仓库不直接复制其内部实现。
-- SciPy HiGHS 不等价于 Gurobi，大 case 上 MILP 质量和 runtime 都会有差异。
+This uses `configs/atplace_benchmark.yaml`.
+
+5. Run the `atmplace`-only benchmark:
+
+```bash
+bash scripts/run_atmplace.sh
+```
+
+This uses `configs/atmplace_benchmark.yaml`.
+
+6. Generate a thermal dataset:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir /tmp/thermopt_dataset \
+  --num_samples 10 \
+  --variation_type random
+```
+
+## Available Configs
+
+- `configs/v0_default.yaml`: SA on synthetic random cases.
+- `configs/atplace_v0.yaml`: SA on ATPlace cases.
+- `configs/atplace_benchmark.yaml`: standalone `atplace` benchmark.
+- `configs/atmplace_benchmark.yaml`: standalone `atmplace` benchmark.
+- `configs/wl_benchmark.yaml`: ATPlace-family benchmark for `atplace` and `atmplace`.
+- `configs/optimizer_comparison.yaml`: older broad comparison config, kept for reference.
+
+## Thermal Backend
+
+The thermal backend is controlled by the `thermal` section in a config file:
+
+```yaml
+thermal:
+  backend: hotspot   # or heuristic
+  hotspot_binary: external/ATPlace_pub/thermal/hotspot
+  hotspot_allow_fallback: true
+```
+
+- `backend: hotspot` uses the vendored HotSpot binary when available.
+- `hotspot_allow_fallback: true` keeps the code runnable if HotSpot is missing.
+- Set `hotspot_required: true` in a script or config if you want to force real HotSpot evaluation.
+- `thermal.grid_size` is used as-is for HotSpot `grid_rows` and `grid_cols`; rectangular grids are supported.
+
+## Objective
+
+The objective combines wirelength and temperature:
+
+```yaml
+objective:
+  alpha: 1.0
+  beta: 1.0
+  gamma: 50.0
+  delta: 80.0
+```
+
+- `beta: 0.0` means wirelength-only optimization.
+- `beta > 0.0` means temperature contributes to the total cost.
+
+## Units And Rotation
+
+- Internal layout units are `mm`.
+- The HotSpot adapter converts to meters internally.
+- Dataset generation uses `0` and `90` degree rotations.
+- SA can use `0`, `90`, `180`, and `270` degree rotations, but `allow_rotate_move` controls whether the optimizer is allowed to use rotation moves.
+
+## Outputs
+
+Generated optimizer results are written under `outputs/`:
+
+- `summary.json`
+- `metrics.csv`
+- `final_summary.png`
+- `final_layout_*.png`
+- `final_temperature_*.png`
+- `cost_curve_*.png`
+
+Dataset outputs are written separately as:
+
+- `pointwise/sample_*.csv`
+- `gridwise/sample_*.csv`
+- `json/sample_*.json`
+- `dataset_summary.json`
+
+## Maintenance Boundary
+
+- To replace the thermal solver later, keep the `ThermalBackend` interface and swap the implementation under `src/thermopt/thermal/`.
+- To replace the optimizer later, keep the `Objective` callback signature and only change the code under `src/thermopt/optimizer/`.
+- To move the dataset generator later, keep the ATPlace-style case loader and preserve the output schema in `pointwise/`, `gridwise/`, and `json/`.

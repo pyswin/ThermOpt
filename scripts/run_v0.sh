@@ -8,4 +8,9 @@ export MPLCONFIGDIR="$ROOT_DIR/.cache/matplotlib"
 export XDG_CACHE_HOME="$ROOT_DIR/.cache"
 mkdir -p "$MPLCONFIGDIR"
 
-PYTHONPATH=src python -m thermopt.experiments.run_v0_sa --config configs/v0_default.yaml
+PYTHON_BIN="$ROOT_DIR/.venv/bin/python"
+if [[ ! -x "$PYTHON_BIN" ]]; then
+  PYTHON_BIN="$(command -v python3)"
+fi
+
+PYTHONPATH=src "$PYTHON_BIN" -m thermopt.experiments.run_v0_sa --config configs/v0_default.yaml

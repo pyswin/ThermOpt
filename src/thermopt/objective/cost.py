@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from thermopt.layout.objects import FloorplanCase, Layout
 from thermopt.objective.metrics import collect_metrics
-from thermopt.thermal.heuristic import simulate_temperature
+from thermopt.thermal.backend import ThermalBackend, build_thermal_backend
 
 
 @dataclass(frozen=True)
@@ -14,16 +14,24 @@ class CostResult:
 
 
 class Objective:
-    def __init__(self, case: FloorplanCase, thermal_config: dict, objective_config: dict, reference_layout: Layout):
+    def __init__(
+        self,
+        case: FloorplanCase,
+        thermal_config: dict,
+        objective_config: dict,
+        reference_layout: Layout,
+        thermal_backend: ThermalBackend | None = None,
+    ):
         self.case = case
         self.thermal_config = thermal_config
         self.config = objective_config
+        self.backend = thermal_backend or build_thermal_backend(case, thermal_config)
         reference = self.evaluate_raw(reference_layout)
         self.wl0 = max(reference["wirelength"], 1e-9)
         self.t0 = max(reference["thermal"], 1e-9)
 
     def evaluate_raw(self, layout: Layout) -> dict[str, float]:
-        temperature = simulate_temperature(self.case, layout, self.thermal_config)
+        temperature = self.backend.simulate(self.case, layout)
         return collect_metrics(
             self.case,
             layout,

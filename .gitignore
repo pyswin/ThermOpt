@@ -5,6 +5,10 @@ __pycache__/
 .DS_Store
 outputs/*
 !outputs/.gitkeep
+external/**/.git/
+external/**/__pycache__/
+external/**/results/
+external/**/repro_runs/
 pointwise/
 external/**/.git/
 external/**/__pycache__/

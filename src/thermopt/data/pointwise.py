@@ -1,17 +1,25 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 from thermopt.data.inputs import CaseInput
 from thermopt.layout.objects import Chiplet, FloorplanCase, Layout, Net, Placement
 
 
-def _grid_cell_area(df: pd.DataFrame) -> float:
-    xs = np.sort(df["grid_x"].unique())
-    ys = np.sort(df["grid_y"].unique())
+def _load_rows(path: Path) -> tuple[list[dict[str, object]], list[str]]:
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+        fieldnames = reader.fieldnames or []
+    return rows, fieldnames
+
+
+def _grid_cell_area(rows: list[dict[str, object]]) -> float:
+    xs = np.sort(np.unique([float(row["grid_x"]) for row in rows]))
+    ys = np.sort(np.unique([float(row["grid_y"]) for row in rows]))
     dx = float(np.median(np.diff(xs))) if len(xs) > 1 else 1.0
     dy = float(np.median(np.diff(ys))) if len(ys) > 1 else 1.0
     return dx * dy
@@ -48,30 +56,38 @@ def _make_nets(placements: list[Placement], net_degree: int) -> tuple[Net, ...]:
 
 
 def load_pointwise_case(path: Path, config: dict) -> CaseInput:
-    df = pd.read_csv(path)
+    rows, fieldnames = _load_rows(path)
+    if not rows:
+        raise ValueError(f"{path} is empty")
     required = {"grid_x", "grid_y", "chiplet_id", "chiplet_power"}
-    missing = required.difference(df.columns)
+    missing = required.difference(fieldnames)
     if missing:
         raise ValueError(f"{path} is missing columns: {sorted(missing)}")
 
-    outline_width = float(config.get("outline_width", df["grid_x"].max() - df["grid_x"].min()))
-    outline_height = float(config.get("outline_height", df["grid_y"].max() - df["grid_y"].min()))
-    scale_x = outline_width / max(float(df["grid_x"].max() - df["grid_x"].min()), 1e-9)
-    scale_y = outline_height / max(float(df["grid_y"].max() - df["grid_y"].min()), 1e-9)
-    cell_area = _grid_cell_area(df) * scale_x * scale_y
+    grid_xs = np.array([float(row["grid_x"]) for row in rows], dtype=float)
+    grid_ys = np.array([float(row["grid_y"]) for row in rows], dtype=float)
+    outline_width = float(config.get("outline_width", float(grid_xs.max() - grid_xs.min())))
+    outline_height = float(config.get("outline_height", float(grid_ys.max() - grid_ys.min())))
+    scale_x = outline_width / max(float(grid_xs.max() - grid_xs.min()), 1e-9)
+    scale_y = outline_height / max(float(grid_ys.max() - grid_ys.min()), 1e-9)
+    cell_area = _grid_cell_area(rows) * scale_x * scale_y
 
     chiplets: list[Chiplet] = []
     placements: list[Placement] = []
     min_size = float(config.get("min_chiplet_size", 1.0))
+    groups: dict[str, list[dict[str, object]]] = {}
+    for row in rows:
+        groups.setdefault(str(row["chiplet_id"]), []).append(row)
 
-    for chiplet_id, group in df.groupby("chiplet_id", sort=True):
+    for chiplet_id in sorted(groups.keys()):
+        group = groups[chiplet_id]
         name = f"C{chiplet_id}"
         area = max(float(len(group)) * cell_area, min_size * min_size)
         aspect = float(config.get("default_aspect_ratio", 1.0))
         width = max(min_size, float(np.sqrt(area * aspect)))
         height = max(min_size, float(area / width))
-        cx = float((group["grid_x"].mean() - df["grid_x"].min()) * scale_x)
-        cy = float((group["grid_y"].mean() - df["grid_y"].min()) * scale_y)
+        cx = float(np.mean([float(row["grid_x"]) for row in group]) - grid_xs.min()) * scale_x
+        cy = float(np.mean([float(row["grid_y"]) for row in group]) - grid_ys.min()) * scale_y
         x = min(max(0.0, cx - width * 0.5), max(0.0, outline_width - width))
         y = min(max(0.0, cy - height * 0.5), max(0.0, outline_height - height))
 
@@ -80,7 +96,7 @@ def load_pointwise_case(path: Path, config: dict) -> CaseInput:
                 id=name,
                 width=width,
                 height=height,
-                power=float(group["chiplet_power"].mean()),
+                power=float(np.mean([float(row["chiplet_power"]) for row in group])),
             )
         )
         placements.append(Placement(chiplet_id=name, x=x, y=y))
