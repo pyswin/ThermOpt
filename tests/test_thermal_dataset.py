@@ -77,3 +77,29 @@ def test_generate_thermal_dataset_writes_pointwise_and_json(tmp_path: Path) -> N
     summary_payload = json.loads(summary.read_text(encoding="utf-8"))
     assert summary_payload["successful_samples"] == 1
     assert summary_payload["thermal_backend"]["runtime_mode"] == "heuristic"
+
+
+def test_pointwise_generation_marks_background_cells(tmp_path: Path) -> None:
+    case_dir = write_atplace_case(tmp_path)
+    output_dir = tmp_path / "dataset"
+
+    generator = ThermalDatasetGenerator(
+        case_dir,
+        {
+            "backend": "heuristic",
+            "grid_size": [4, 4],
+            "ambient": 25.0,
+            "scale": 0.1,
+            "sigma_factor": 1.0,
+        },
+        use_case_config=False,
+        randomize_power=False,
+        randomize_rotation=False,
+        seed=7,
+    )
+
+    generator.generate_dataset(num_samples=1, output_dir=output_dir, variation_type="random", save_formats=["pointwise"])
+
+    pointwise = output_dir / "pointwise" / "sample_000000.csv"
+    lines = pointwise.read_text(encoding="utf-8").splitlines()
+    assert any(line.split(",")[2] == "background" and line.split(",")[3] == "0.000000" for line in lines[1:])

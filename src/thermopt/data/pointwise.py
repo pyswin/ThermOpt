@@ -77,7 +77,10 @@ def load_pointwise_case(path: Path, config: dict) -> CaseInput:
     min_size = float(config.get("min_chiplet_size", 1.0))
     groups: dict[str, list[dict[str, object]]] = {}
     for row in rows:
-        groups.setdefault(str(row["chiplet_id"]), []).append(row)
+        chiplet_id = str(row["chiplet_id"])
+        if chiplet_id == "background":
+            continue
+        groups.setdefault(chiplet_id, []).append(row)
 
     for chiplet_id in sorted(groups.keys()):
         group = groups[chiplet_id]
