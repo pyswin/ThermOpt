@@ -108,6 +108,8 @@ class ThermalDatasetGenerator:
                 "ambient": 25.0,
                 "scale": 0.05,
                 "sigma_factor": 1.0,
+                "hotspot_required": True,
+                "hotspot_allow_fallback": False,
             },
             **(thermal_config or {}),
         )

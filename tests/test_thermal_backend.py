@@ -1,12 +1,16 @@
 from pathlib import Path
 
+import numpy as np
+import pytest
+
 from thermopt.layout.objects import Chiplet, FloorplanCase, Layout, Placement
 from thermopt.optimizer.simulated_annealing import available_moves
 from thermopt.thermal.backend import build_thermal_backend
-from thermopt.thermal.hotspot import _render_hotspot_config, _write_hotspot_floorplans
+import thermopt.thermal.hotspot as hotspot_module
+from thermopt.thermal.hotspot import _parse_grid_steady, _render_hotspot_config, _write_hotspot_floorplans
 
 
-def test_hotspot_backend_falls_back_when_binary_is_missing(tmp_path) -> None:
+def test_hotspot_backend_raises_when_binary_is_missing(tmp_path) -> None:
     case = FloorplanCase(
         chiplets=(Chiplet("A", 4.0, 4.0, 10.0), Chiplet("B", 4.0, 4.0, 20.0)),
         nets=(),
@@ -15,32 +19,92 @@ def test_hotspot_backend_falls_back_when_binary_is_missing(tmp_path) -> None:
     )
     layout = Layout((Placement("A", 0.0, 0.0), Placement("B", 6.0, 0.0)))
 
+    with pytest.raises(FileNotFoundError):
+        build_thermal_backend(
+            case,
+            {
+                "backend": "hotspot",
+                "hotspot_binary": "",
+                "grid_size": [12, 10],
+                "ambient": 25.0,
+                "scale": 0.1,
+                "sigma_factor": 1.0,
+            },
+            work_dir=tmp_path,
+        ).simulate(case, layout)
+
+
+def test_ai_backend_is_reserved_interface(tmp_path) -> None:
+    case = FloorplanCase(
+        chiplets=(Chiplet("A", 4.0, 4.0, 10.0),),
+        nets=(),
+        outline_width=16.0,
+        outline_height=12.0,
+    )
+    layout = Layout((Placement("A", 0.0, 0.0),))
+
+    backend = build_thermal_backend(case, {"backend": "ai"}, work_dir=tmp_path)
+
+    assert backend.name == "ai"
+    with pytest.raises(NotImplementedError):
+        backend.simulate(case, layout)
+
+
+def test_hotspot_backend_prefers_compatible_platform_binary(tmp_path, monkeypatch) -> None:
+    vendor_root = tmp_path / "external" / "ATPlace_pub" / "thermal"
+    vendor_root.mkdir(parents=True)
+    linux_binary = vendor_root / "hotspot"
+    linux_binary.write_bytes(b"\x7fELFlinux")
+    mac_binary = vendor_root / "hotspot-darwin-arm64"
+    mac_binary.write_bytes(b"\xcf\xfa\xed\xfe")
+
+    monkeypatch.setattr(hotspot_module, "_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(hotspot_module.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(hotspot_module.platform, "machine", lambda: "arm64")
+
+    case = FloorplanCase(chiplets=(Chiplet("A", 4.0, 4.0, 10.0),), nets=(), outline_width=16.0, outline_height=12.0)
     backend = build_thermal_backend(
         case,
         {
             "backend": "hotspot",
-            "hotspot_binary": "",
-            "hotspot_allow_fallback": True,
-            "grid_size": [12, 10],
-            "ambient": 25.0,
-            "scale": 0.1,
-            "sigma_factor": 1.0,
+            "hotspot_binary": "external/ATPlace_pub/thermal/hotspot",
         },
-        work_dir=tmp_path,
+        work_dir=tmp_path / "work",
     )
 
-    temperature = backend.simulate(case, layout)
-
-    assert backend.name == "hotspot"
-    assert backend.runtime_mode == "heuristic-fallback"
-    assert temperature.shape == (10, 12)
-    assert float(temperature.min()) >= 25.0
+    assert backend._binary_path == mac_binary.resolve()
 
 
 def test_sa_move_pool_can_disable_rotation() -> None:
     names, probs = available_moves(False)
     assert names == ["translate", "swap", "perturb"]
     assert abs(sum(probs) - 1.0) < 1e-9
+
+
+def test_hotspot_grid_parser_reads_layered_grid_output(tmp_path: Path) -> None:
+    grid_file = tmp_path / "sample.grid.steady"
+    grid_file.write_text(
+        "\n".join(
+            [
+                "Layer 0:",
+                "0\t300.0",
+                "1\t301.0",
+                "2\t302.0",
+                "3\t303.0",
+                "Layer 4:",
+                "0\t310.0",
+                "1\t311.0",
+                "2\t312.0",
+                "3\t313.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    temperature = _parse_grid_steady(grid_file, (2, 2))
+
+    assert temperature.shape == (2, 2)
+    np.testing.assert_allclose(temperature, [[38.85, 36.85], [39.85, 37.85]])
 
     names_with_rotate, probs_with_rotate = available_moves(True)
     assert names_with_rotate == ["translate", "swap", "rotate", "perturb"]

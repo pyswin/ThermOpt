@@ -78,7 +78,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         "num_chiplets": len(case.chiplets),
         "num_nets": len(case.nets),
         "thermal": {
-            "requested_backend": str(config["thermal"].get("backend", "heuristic")),
+            "requested_backend": str(config["thermal"].get("backend", "hotspot")),
             "runtime_mode": getattr(thermal_backend, "runtime_mode", thermal_backend.name),
         },
         "experiments": {},

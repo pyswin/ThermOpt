@@ -2,10 +2,13 @@ from pathlib import Path
 
 import yaml
 
+import thermopt.experiments.run_optimizer_comparison as optimizer_comparison_module
 from thermopt.experiments.run_optimizer_comparison import run
+from helpers import DummyThermalBackend
 
 
-def test_optimizer_comparison_generates_rl_outputs(tmp_path: Path) -> None:
+def test_optimizer_comparison_generates_rl_outputs(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(optimizer_comparison_module, "build_thermal_backend", lambda *args, **kwargs: DummyThermalBackend())
     config = {
         "seed": 40,
         "output_root": str(tmp_path),

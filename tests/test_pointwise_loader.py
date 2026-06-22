@@ -3,7 +3,9 @@ from pathlib import Path
 import yaml
 
 from thermopt.data.pointwise import load_pointwise_case
+import thermopt.experiments.run_v0_sa as run_v0_module
 from thermopt.experiments.run_v0_sa import run
+from helpers import DummyThermalBackend
 
 
 def write_pointwise_csv(path: Path) -> None:
@@ -42,7 +44,8 @@ def test_load_pointwise_case_builds_case_and_layout(tmp_path: Path) -> None:
     assert loaded.case.chiplets[1].power == 20
 
 
-def test_run_pointwise_config_writes_case_outputs(tmp_path: Path) -> None:
+def test_run_pointwise_config_writes_case_outputs(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(run_v0_module, "build_thermal_backend", lambda *args, **kwargs: DummyThermalBackend())
     data_dir = tmp_path / "pointwise"
     data_dir.mkdir()
     write_pointwise_csv(data_dir / "sample_000000.csv")

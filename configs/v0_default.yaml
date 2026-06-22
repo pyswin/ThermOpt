@@ -19,7 +19,8 @@ case:
 thermal:
   backend: hotspot
   hotspot_binary: external/ATPlace_pub/thermal/hotspot
-  hotspot_allow_fallback: true
+  hotspot_required: true
+  hotspot_allow_fallback: false
   grid_size: [64, 64]
   ambient: 25.0
   scale: 1.8
