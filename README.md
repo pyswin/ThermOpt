@@ -79,10 +79,10 @@ This uses `configs/atmplace_benchmark.yaml`.
 ```bash
 python3 scripts/generate_thermal_dataset.py \
   --case_dir external/ATPlace_pub/cases/Case1 \
-  --output_dir /tmp/thermopt_dataset \
-  --num_samples 10 \
-  --variation_type random
+  --output_dir outputs/thermopt_dataset
 ```
+
+The detailed dataset-generation commands and option meanings are listed below.
 
 ## Available Configs
 
@@ -108,6 +108,131 @@ thermal:
 - `hotspot_allow_fallback: true` keeps the code runnable if HotSpot is missing.
 - Set `hotspot_required: true` in a script or config if you want to force real HotSpot evaluation.
 - `thermal.grid_size` is the target output resolution. HotSpot grid inputs are rounded up per axis to the next power of two, then resampled back to the requested size.
+
+## Dataset Generation
+
+`scripts/generate_thermal_dataset.py` builds thermal training data from an ATPlace-style case directory. It reads the case, creates layouts, applies optional randomization, runs the thermal backend, and writes `pointwise/`, `gridwise/`, `json/`, and `dataset_summary.json`.
+
+Important behavior:
+
+- `--num_samples` means the number of **successful** samples to produce.
+- Failed attempts are retried until the requested number of successful samples is reached.
+- Sample file names are contiguous: `sample_000000`, `sample_000001`, ...
+- `pointwise` CSVs store grid coordinates, a chiplet label for the cell, the associated chiplet power, and the temperature.
+- Grid cells outside any chiplet are labeled as `background` with `chiplet_power=0`.
+
+### Common Commands
+
+Generate 1000 successful samples with position randomization only:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type random \
+  --no-randomize_power \
+  --no-randomize_rotation
+```
+
+Keep layout fixed, only vary power:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type random \
+  --no-randomize_position \
+  --no-randomize_rotation
+```
+
+Keep layout fixed and generate a stable baseline dataset:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type fixed \
+  --no-randomize_position \
+  --no-randomize_power \
+  --no-randomize_rotation
+```
+
+Generate a monotonic power sweep:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type grid
+```
+
+Force the real HotSpot binary and fail if it is missing:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --backend hotspot \
+  --hotspot_required
+```
+
+Use the heuristic backend instead of HotSpot:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --backend heuristic
+```
+
+### Option Reference
+
+| Option | Meaning |
+| --- | --- |
+| `--case_dir` | Input ATPlace-style case directory containing `.blocks`, `.nets`, `.power`, and `.pl`. |
+| `--output_dir` | Output directory for dataset files. |
+| `--num_samples` | Target number of successful samples. The generator retries until this count is reached. |
+| `--variation_type` | `random`, `fixed`, or `grid`. Controls how layouts and powers are generated. |
+| `--save_formats` | Comma-separated output formats: `pointwise`, `gridwise`, `json`. |
+| `--config_name` | Case config file name, usually `reproduce.json`. |
+| `--config_mode` | Case config mode, `thermal` or `wl`. |
+| `--use_case_config` / `--no-use_case_config` | Whether to read extra case settings from the case directory. |
+| `--unit_scale` | Scale factor that converts case units into mm. |
+| `--initial_layout` | Initial layout source, `pl` or `random`. |
+| `--min_gap` | Minimum allowed gap between chiplets, in mm. |
+| `--randomize_position` / `--no-randomize_position` | Enable or disable position randomization. |
+| `--randomize_power` / `--no-randomize_power` | Enable or disable power randomization. |
+| `--randomize_rotation` / `--no-randomize_rotation` | Enable or disable rotation randomization. |
+| `--power_additive_fraction` | Adds absolute power perturbation to improve low-power coverage. |
+| `--power_dropout_prob` | Probability of applying a low-power dropout state. |
+| `--power_sleep_ratio` | Power ratio used for the dropout state. |
+| `--power_shutdown_prob` | Probability of forcing a chiplet to 0 W. |
+| `--min_power_density` / `--max_power_density` | Lower and upper power-density bounds used to clamp random power. |
+| `--tdp_limit` / `--tdp_limit_ratio` | Soft total-power cap for the whole chip. |
+| `--backend` | Thermal backend, `hotspot` or `heuristic`. |
+| `--hotspot_binary` | Path to the HotSpot executable. Defaults to the vendored binary. |
+| `--hotspot_required` / `--no-hotspot-required` | Fail if the HotSpot binary is missing. |
+| `--hotspot_allow_fallback` / `--no-hotspot-allow-fallback` | Allow or forbid heuristic fallback when HotSpot is unavailable. |
+| `--grid_size NX NY` | Target thermal grid resolution. |
+| `--ambient` | Ambient temperature, in Celsius. |
+| `--scale` | Power-to-temperature scaling factor used by the thermal backend. |
+| `--sigma_factor` | Gaussian spread factor used by the heuristic backend. |
+| `--thermal_threshold` | Optional thermal threshold used by HotSpot config generation. |
+| `--work_dir` | Workspace for HotSpot temporary files. |
+| `--seed` | Random seed. |
+
+### Practical Notes
+
+- If you want a dataset for temperature-field training, keep `pointwise` and `json` in `--save_formats`.
+- If you only care about the raster temperature map, `gridwise` is the smallest output.
+- `background` cells in `pointwise` are intentional. They represent grid locations outside any chiplet footprint.
+- `grid_size` in the dataset command is the requested output resolution, not the internal HotSpot grid. HotSpot may round its internal grid up and then resample back.
 
 ## Objective
 

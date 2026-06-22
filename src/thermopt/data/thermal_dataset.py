@@ -556,19 +556,16 @@ class ThermalDatasetGenerator:
         )
         return Layout(placements)
 
-    def _nearest_chiplet(self, grid_x: float, grid_y: float, configs: list[dict[str, Any]]) -> tuple[int, float]:
-        best_idx = -1
-        best_dist = float("inf")
-        best_power = 0.0
-        for idx, config in enumerate(configs):
-            center_x = float(config["x"]) + float(config["width"]) * 0.5
-            center_y = float(config["y"]) + float(config["height"]) * 0.5
-            dist = float(np.hypot(grid_x - center_x, grid_y - center_y))
-            if dist < best_dist:
-                best_dist = dist
-                best_idx = idx
-                best_power = float(config["power"])
-        return best_idx, best_power
+    def _chiplet_at_point(self, grid_x: float, grid_y: float, configs: list[dict[str, Any]]) -> tuple[str, float]:
+        eps = 1e-9
+        for config in configs:
+            x0 = float(config["x"])
+            y0 = float(config["y"])
+            x1 = x0 + float(config["width"])
+            y1 = y0 + float(config["height"])
+            if x0 - eps <= grid_x <= x1 + eps and y0 - eps <= grid_y <= y1 + eps:
+                return str(config.get("name", "background")), float(config["power"])
+        return "background", 0.0
 
     def generate_sample(self, sample_id: int, chiplet_configs: list[dict[str, Any]]) -> ThermalSample | None:
         configs = [self._clamp_config_position(config.copy()) for config in chiplet_configs]
@@ -608,7 +605,7 @@ class ThermalDatasetGenerator:
                 for col_idx in range(cols):
                     grid_x = float(col_idx) / max(cols - 1, 1) * self.case.outline_width
                     grid_y = float(row_idx) / max(rows - 1, 1) * self.case.outline_height
-                    chiplet_id, power = self._nearest_chiplet(grid_x, grid_y, configs)
+                    chiplet_id, power = self._chiplet_at_point(grid_x, grid_y, configs)
                     writer.writerow(
                         [
                             f"{grid_x:.6f}",
@@ -670,24 +667,31 @@ class ThermalDatasetGenerator:
 
         successful = 0
         failed = 0
-        for sample_id in range(num_samples):
+        attempted = 0
+        target_successes = max(0, int(num_samples))
+        while successful < target_successes:
             try:
                 if variation_type == "fixed":
                     configs = [config.copy() for config in self.base_configs]
                 elif variation_type == "random":
                     configs = self._generate_random_variation()
                 elif variation_type == "grid":
-                    configs = self._generate_grid_variation(sample_id, num_samples)
+                    configs = self._generate_grid_variation(attempted, target_successes)
                 else:
                     raise ValueError(f"unknown variation_type: {variation_type}")
             except Exception as exc:
                 failed += 1
-                print(f"[warn] sample {sample_id} layout generation failed: {exc}")
+                print(f"[warn] sample attempt {attempted} layout generation failed: {exc}")
+                attempted += 1
                 continue
 
+            sample_id = successful
             sample_data = self.generate_sample(sample_id, configs)
             if sample_data is None:
                 failed += 1
+                attempted += 1
+                if variation_type == "fixed":
+                    raise RuntimeError("fixed variation failed to generate a valid sample")
                 continue
 
             for fmt in save_formats:
@@ -701,18 +705,21 @@ class ThermalDatasetGenerator:
                     raise ValueError(f"unknown save format: {fmt}")
 
             successful += 1
+            attempted += 1
 
-        self._save_dataset_summary(output_dir, num_samples, successful, failed)
+        self._save_dataset_summary(output_dir, target_successes, attempted, successful, failed)
         return output_dir
 
-    def _save_dataset_summary(self, output_dir: Path, num_samples: int, successful: int, failed: int) -> None:
+    def _save_dataset_summary(self, output_dir: Path, requested_samples: int, attempted: int, successful: int, failed: int) -> None:
         summary = {
             "generation_time": datetime.now().isoformat(),
             "case": self.case_dir.name,
-            "total_samples": num_samples,
+            "requested_samples": requested_samples,
+            "attempted_samples": attempted,
+            "total_samples": successful,
             "successful_samples": successful,
             "failed_samples": failed,
-            "success_rate": successful / num_samples if num_samples > 0 else 0.0,
+            "success_rate": successful / attempted if attempted > 0 else 0.0,
             "system_config": {
                 "interposer_width": self.case.outline_width,
                 "interposer_height": self.case.outline_height,
