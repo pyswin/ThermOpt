@@ -20,3 +20,4 @@ external/**/repro_runs/
 dist/
 build/
 *.egg-info/
+third_party/

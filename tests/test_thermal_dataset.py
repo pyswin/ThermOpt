@@ -3,7 +3,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
+
+import thermopt.data.thermal_dataset as thermal_dataset_module
 from thermopt.data.thermal_dataset import ThermalDatasetGenerator
+
+
+class DummyThermalBackend:
+    name = "dummy"
+    runtime_mode = "dummy"
+
+    def simulate(self, case, layout):
+        return np.full((8, 8), 42.0)
 
 
 def write_atplace_case(root: Path, name: str = "Case1") -> Path:
@@ -40,14 +51,15 @@ def write_atplace_case(root: Path, name: str = "Case1") -> Path:
     return case_dir
 
 
-def test_generate_thermal_dataset_writes_pointwise_and_json(tmp_path: Path) -> None:
+def test_generate_thermal_dataset_writes_pointwise_and_json(tmp_path: Path, monkeypatch) -> None:
     case_dir = write_atplace_case(tmp_path)
     output_dir = tmp_path / "dataset"
+    monkeypatch.setattr(thermal_dataset_module, "build_thermal_backend", lambda *args, **kwargs: DummyThermalBackend())
 
     generator = ThermalDatasetGenerator(
         case_dir,
         {
-            "backend": "heuristic",
+            "backend": "hotspot",
             "grid_size": [8, 8],
             "ambient": 25.0,
             "scale": 0.1,
@@ -76,17 +88,18 @@ def test_generate_thermal_dataset_writes_pointwise_and_json(tmp_path: Path) -> N
 
     summary_payload = json.loads(summary.read_text(encoding="utf-8"))
     assert summary_payload["successful_samples"] == 1
-    assert summary_payload["thermal_backend"]["runtime_mode"] == "heuristic"
+    assert summary_payload["thermal_backend"]["runtime_mode"] == "dummy"
 
 
-def test_pointwise_generation_marks_background_cells(tmp_path: Path) -> None:
+def test_pointwise_generation_marks_background_cells(tmp_path: Path, monkeypatch) -> None:
     case_dir = write_atplace_case(tmp_path)
     output_dir = tmp_path / "dataset"
+    monkeypatch.setattr(thermal_dataset_module, "build_thermal_backend", lambda *args, **kwargs: DummyThermalBackend())
 
     generator = ThermalDatasetGenerator(
         case_dir,
         {
-            "backend": "heuristic",
+            "backend": "hotspot",
             "grid_size": [4, 4],
             "ambient": 25.0,
             "scale": 0.1,

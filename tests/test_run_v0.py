@@ -2,10 +2,13 @@ from pathlib import Path
 
 import yaml
 
+import thermopt.experiments.run_v0_sa as run_v0_module
 from thermopt.experiments.run_v0_sa import run
+from helpers import DummyThermalBackend
 
 
-def test_run_generates_final_summary(tmp_path: Path) -> None:
+def test_run_generates_final_summary(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(run_v0_module, "build_thermal_backend", lambda *args, **kwargs: DummyThermalBackend())
     config = {
         "seed": 3,
         "output_root": str(tmp_path),

@@ -1,5 +1,6 @@
 from thermopt.data.case_generator import generate_random_case, random_initial_layout
 from thermopt.objective.cost import Objective
+from helpers import DummyThermalBackend
 
 
 def test_objective_returns_finite_cost() -> None:
@@ -20,6 +21,7 @@ def test_objective_returns_finite_cost() -> None:
         {"grid_size": [30, 20], "ambient": 25, "scale": 1.0, "sigma_factor": 1.0},
         {"alpha": 1, "beta": 1, "gamma": 10, "delta": 10, "thermal_mode": "topk", "topk_percent": 0.05},
         layout,
+        thermal_backend=DummyThermalBackend(),
     )
     result = objective(layout)
     assert result.total > 0

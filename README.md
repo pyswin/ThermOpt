@@ -7,7 +7,7 @@ ThermOpt is a chiplet floorplanning sandbox with two independent flows that shar
 
 The dataset path and the optimization path are separate consumers of `ThermalBackend`. They do not depend on each other in execution order.
 
-The ATPlace benchmark cases are vendored under `external/ATPlace_pub/cases/`. The default HotSpot binary is vendored at `external/ATPlace_pub/thermal/hotspot`.
+The ATPlace benchmark cases are vendored under `external/ATPlace_pub/cases/`. HotSpot binaries are vendored under `external/ATPlace_pub/thermal/`.
 
 ## Supported Optimizers
 
@@ -99,15 +99,21 @@ The thermal backend is controlled by the `thermal` section in a config file:
 
 ```yaml
 thermal:
-  backend: hotspot   # or heuristic
+  backend: hotspot   # or ai
   hotspot_binary: external/ATPlace_pub/thermal/hotspot
-  hotspot_allow_fallback: true
+  hotspot_required: true
+  hotspot_allow_fallback: false
 ```
 
-- `backend: hotspot` uses the vendored HotSpot binary when available.
-- `hotspot_allow_fallback: true` keeps the code runnable if HotSpot is missing.
-- Set `hotspot_required: true` in a script or config if you want to force real HotSpot evaluation.
+- `backend: hotspot` uses a compatible vendored HotSpot binary when available.
+- `hotspot_binary` can stay pointed at `external/ATPlace_pub/thermal/hotspot`; the resolver first checks platform-specific vendored names before falling back to that path.
+- Current vendored binaries:
+  - `external/ATPlace_pub/thermal/hotspot`: Linux x86-64.
+  - `external/ATPlace_pub/thermal/hotspot-darwin-arm64`: macOS arm64.
+- `backend: hotspot` is the default for thermal runs. If HotSpot is missing or fails, the run raises an error.
+- `backend: ai` is a reserved interface for a future AI thermal simulator. It currently raises `NotImplementedError`.
 - `thermal.grid_size` is the target output resolution. HotSpot grid inputs are rounded up per axis to the next power of two, then resampled back to the requested size.
+- HotSpot grid output can contain multiple `Layer N:` sections. The parser reads the chip layer (`Layer 4`) when present.
 
 ## Dataset Generation
 
@@ -170,7 +176,7 @@ python3 scripts/generate_thermal_dataset.py \
   --variation_type grid
 ```
 
-Force the real HotSpot binary and fail if it is missing:
+Generate with real HotSpot and fail if it is missing or fails:
 
 ```bash
 python3 scripts/generate_thermal_dataset.py \
@@ -178,17 +184,8 @@ python3 scripts/generate_thermal_dataset.py \
   --output_dir outputs/thermopt_dataset \
   --num_samples 1000 \
   --backend hotspot \
-  --hotspot_required
-```
-
-Use the heuristic backend instead of HotSpot:
-
-```bash
-python3 scripts/generate_thermal_dataset.py \
-  --case_dir external/ATPlace_pub/cases/Case1 \
-  --output_dir outputs/thermopt_dataset \
-  --num_samples 1000 \
-  --backend heuristic
+  --hotspot_required \
+  --no-hotspot_allow_fallback
 ```
 
 ### Option Reference
@@ -215,14 +212,14 @@ python3 scripts/generate_thermal_dataset.py \
 | `--power_shutdown_prob` | Probability of forcing a chiplet to 0 W. |
 | `--min_power_density` / `--max_power_density` | Lower and upper power-density bounds used to clamp random power. |
 | `--tdp_limit` / `--tdp_limit_ratio` | Soft total-power cap for the whole chip. |
-| `--backend` | Thermal backend, `hotspot` or `heuristic`. |
-| `--hotspot_binary` | Path to the HotSpot executable. Defaults to the vendored binary. |
-| `--hotspot_required` / `--no-hotspot-required` | Fail if the HotSpot binary is missing. |
-| `--hotspot_allow_fallback` / `--no-hotspot-allow-fallback` | Allow or forbid heuristic fallback when HotSpot is unavailable. |
+| `--backend` | Thermal backend, `hotspot` or reserved `ai`. |
+| `--hotspot_binary` | Path to the HotSpot executable. Defaults to the vendored path. Platform-specific vendored binaries are preferred automatically when present. |
+| `--hotspot_required` / `--no-hotspot-required` | Fail if the HotSpot binary is missing. Defaults to required. |
+| `--hotspot_allow_fallback` / `--no-hotspot-allow-fallback` | Deprecated compatibility option. HotSpot failures raise errors; no heuristic fallback is used. |
 | `--grid_size NX NY` | Target thermal grid resolution. |
 | `--ambient` | Ambient temperature, in Celsius. |
 | `--scale` | Power-to-temperature scaling factor used by the thermal backend. |
-| `--sigma_factor` | Gaussian spread factor used by the heuristic backend. |
+| `--sigma_factor` | Reserved thermal configuration parameter. |
 | `--thermal_threshold` | Optional thermal threshold used by HotSpot config generation. |
 | `--work_dir` | Workspace for HotSpot temporary files. |
 | `--seed` | Random seed. |

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import platform
 import re
 import shutil
 import subprocess
@@ -12,8 +13,6 @@ import numpy as np
 
 from thermopt.layout.geometry import bounds
 from thermopt.layout.objects import FloorplanCase, Layout
-from thermopt.thermal.heuristic import simulate_temperature
-
 
 _FLOORPLAN_HEADER = [
     "# Line Format: <unit-name>\\t<width>\\t<height>\\t<left-x>\\t<bottom-y>\\t[<specific-heat>]\\t[<resistivity>]\n",
@@ -85,6 +84,41 @@ def _hotspot_template_path() -> Path:
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+def _platform_hotspot_names() -> list[str]:
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    names: list[str] = []
+    if system == "darwin":
+        names.append(f"hotspot-darwin-{machine}")
+        if machine in {"arm64", "aarch64"}:
+            names.append("hotspot-darwin-arm64")
+        elif machine in {"x86_64", "amd64"}:
+            names.append("hotspot-darwin-x86_64")
+    elif system == "linux":
+        names.append(f"hotspot-linux-{machine}")
+        if machine in {"x86_64", "amd64"}:
+            names.append("hotspot")
+            names.append("hotspot-linux-x86_64")
+        elif machine in {"arm64", "aarch64"}:
+            names.append("hotspot-linux-arm64")
+    return list(dict.fromkeys(names))
+
+
+def _is_compatible_binary(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    system = platform.system().lower()
+    try:
+        header = path.read_bytes()[:4]
+    except OSError:
+        return False
+    if system == "darwin":
+        return header in {b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xca\xfe\xba\xbe", b"\xcf\xfa\xed\xfe"}
+    if system == "linux":
+        return header == b"\x7fELF"
+    return True
 
 
 def _replace_config_value(lines: list[str], key: str, value: str) -> list[str]:
@@ -388,13 +422,46 @@ def _write_hotspot_floorplans(workspace: Path, case: FloorplanCase, layout: Layo
     return workspace / "L4_ChipLayer.flp"
 
 
+def _parse_grid_values(path: Path, expected: int, preferred_layer: int = 4) -> np.ndarray:
+    layers: dict[int, list[float]] = {}
+    flat_values: list[float] = []
+    current_layer: int | None = None
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        layer_match = re.fullmatch(r"Layer\s+(\d+):", line)
+        if layer_match:
+            current_layer = int(layer_match.group(1))
+            layers.setdefault(current_layer, [])
+            continue
+        parts = line.split()
+        try:
+            value = float(parts[1] if len(parts) >= 2 else parts[0])
+        except (IndexError, ValueError):
+            continue
+        if current_layer is None:
+            flat_values.append(value)
+        else:
+            layers.setdefault(current_layer, []).append(value)
+
+    if layers:
+        if preferred_layer in layers and len(layers[preferred_layer]) == expected:
+            return np.array(layers[preferred_layer], dtype=float)
+        complete_layers = [values for _, values in sorted(layers.items()) if len(values) == expected]
+        if complete_layers:
+            return np.array(complete_layers[-1], dtype=float)
+        layer_sizes = {layer: len(values) for layer, values in sorted(layers.items())}
+        raise ValueError(f"unexpected HotSpot grid layer sizes in {path}: {layer_sizes}, expected {expected}")
+
+    return np.array(flat_values, dtype=float)
+
+
 def _parse_grid_steady(path: Path, grid_size: tuple[int, int]) -> np.ndarray:
-    raw = np.loadtxt(path)
-    if raw.ndim == 1:
-        raw = raw.reshape(1, -1)
-    values = raw[:, 1] if raw.shape[1] >= 2 else raw.reshape(-1)
     rows, cols = grid_size
     expected = rows * cols
+    values = _parse_grid_values(path, expected)
     if values.size != expected:
         raise ValueError(f"unexpected HotSpot grid size in {path}: got {values.size}, expected {expected}")
     temp = values.reshape(rows, cols)
@@ -436,34 +503,45 @@ class HotSpotBackend:
         )
         self._workspace_root.mkdir(parents=True, exist_ok=True)
         self._binary_path = self._resolve_binary()
-        if self._binary_path is None and bool(self.config.get("hotspot_required", False)):
+        if self._binary_path is None and bool(self.config.get("hotspot_required", True)):
             raise FileNotFoundError(
-                f"HotSpot binary not found. Set thermal.hotspot_binary or disable hotspot_required."
+                "HotSpot binary not found. Set thermal.hotspot_binary or explicitly disable hotspot_required."
             )
 
     @property
     def runtime_mode(self) -> str:
-        return "hotspot" if self._binary_path is not None else "heuristic-fallback"
+        return "hotspot"
 
     def _resolve_binary(self) -> Path | None:
         binary = str(self.config.get("hotspot_binary", "hotspot")).strip()
         if not binary:
             return None
+        repo_root = _repo_root()
+        vendor_root = repo_root / "external" / "ATPlace_pub" / "thermal"
+        candidates: list[Path] = []
+
+        for name in _platform_hotspot_names():
+            candidates.append(vendor_root / name)
+
         candidate = Path(binary).expanduser()
-        if candidate.is_file():
-            return candidate.resolve()
-        repo_candidate = (_repo_root() / candidate).resolve()
-        if repo_candidate.is_file():
-            return repo_candidate
-        vendor_candidate = _repo_root() / "external" / "ATPlace_pub" / "thermal" / "hotspot"
-        if vendor_candidate.is_file():
-            return vendor_candidate.resolve()
+        candidates.append(candidate)
+        if not candidate.is_absolute():
+            candidates.append((repo_root / candidate).resolve())
+
+        candidates.append(vendor_root / "hotspot")
+
         found = shutil.which(binary)
         if found:
-            return Path(found).resolve()
-        fallback = _repo_root() / "third_party" / "HotSpot" / "hotspot"
-        if fallback.is_file():
-            return fallback.resolve()
+            candidates.append(Path(found).resolve())
+
+        for name in _platform_hotspot_names():
+            candidates.append(repo_root / "third_party" / "HotSpot" / name)
+        candidates.append(repo_root / "third_party" / "HotSpot" / "hotspot")
+
+        for path in dict.fromkeys(candidates):
+            resolved = path.expanduser().resolve()
+            if _is_compatible_binary(resolved):
+                return resolved
         return None
 
     def _layout_key(self, layout: Layout) -> str:
@@ -483,9 +561,7 @@ class HotSpotBackend:
             return np.array(self._cache[key], copy=True)
 
         if self._binary_path is None:
-            temp = simulate_temperature(case, layout, self.config)
-            self._cache[key] = np.array(temp, copy=True)
-            return np.array(temp, copy=True)
+            raise FileNotFoundError("HotSpot binary not found. Set thermal.hotspot_binary to a compatible executable.")
 
         workspace = self._workspace_for(key)
         try:
@@ -526,9 +602,7 @@ class HotSpotBackend:
             temp = _parse_grid_steady(grid_file, _hotspot_grid_size(self.config))
             temp = _resample_grid(temp, _grid_size(self.config))
         except Exception:
-            if bool(self.config.get("hotspot_required", False)) or not bool(self.config.get("hotspot_allow_fallback", True)):
-                raise
-            temp = simulate_temperature(case, layout, self.config)
+            raise
 
         self._cache[key] = np.array(temp, copy=True)
         return np.array(temp, copy=True)

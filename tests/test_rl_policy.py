@@ -1,6 +1,7 @@
 from thermopt.data.case_generator import generate_random_case, random_initial_layout
 from thermopt.objective.cost import Objective
 from thermopt.optimizer.rl_policy import optimize
+from helpers import DummyThermalBackend
 
 
 def test_rl_policy_optimizer_trains_and_returns_best_layout() -> None:
@@ -23,6 +24,7 @@ def test_rl_policy_optimizer_trains_and_returns_best_layout() -> None:
         {"grid_size": [24, 18], "ambient": 25, "scale": 1.0, "sigma_factor": 1.0},
         {"alpha": 1, "beta": 1, "gamma": 20, "delta": 30, "thermal_mode": "topk", "topk_percent": 0.05},
         layout,
+        thermal_backend=DummyThermalBackend(),
     )
 
     result = optimize(
