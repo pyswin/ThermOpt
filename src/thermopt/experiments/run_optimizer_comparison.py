@@ -14,6 +14,7 @@ from thermopt.data.inputs import CaseInput
 from thermopt.experiments.run_v0_sa import load_inputs
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
+from thermopt.objective.metrics import collect_metrics
 from thermopt.optimizer import atplace, atmplace, genetic_algorithm, milp_wl, rl_policy, sequence_pair, simulated_annealing
 from thermopt.thermal.backend import build_thermal_backend
 
@@ -34,10 +35,12 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
     case = case_input.case
     initial_layout = case_input.layout
     thermal_backend = build_thermal_backend(case, config["thermal"], work_dir=output_dir / "_thermal")
+    uses_thermal_objective = abs(float(config["objective"].get("beta", 1.0))) > 1e-12
     objective = Objective(case, config["thermal"], config["objective"], initial_layout, thermal_backend=thermal_backend)
-    initial_temperature = thermal_backend.simulate(case, initial_layout)
     save_layout_figure(case, initial_layout, output_dir / "initial_layout.png", "Initial layout")
-    save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
+    if uses_thermal_objective:
+        initial_temperature = thermal_backend.simulate(case, initial_layout)
+        save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
 
     runs = []
     if "simulated_annealing" in config:
@@ -78,6 +81,17 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         result = optimizer(case, initial_layout, objective, optimizer_config, optimizer_seed)
         runtime = time.perf_counter() - started
         final_temperature = thermal_backend.simulate(case, result.best_layout)
+        final_metrics = collect_metrics(
+            case,
+            result.best_layout,
+            final_temperature,
+            thermal_mode=config["objective"].get("thermal_mode", "topk"),
+            topk_percent=float(config["objective"].get("topk_percent", 0.05)),
+            temperature_limit=float(config["objective"].get("temperature_limit", 85.0)),
+        )
+        report_metrics = dict(result.best_cost.metrics)
+        report_metrics.update(final_metrics)
+        report_metrics["total_cost"] = float(result.best_cost.total)
 
         save_layout_figure(case, result.best_layout, output_dir / f"final_layout_{name}.png", f"Final layout: {name}")
         save_temperature_figure(final_temperature, output_dir / f"final_temperature_{name}.png", f"Final temperature: {name}")
@@ -86,7 +100,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         row = {
             "optimizer": name,
             "runtime_sec": runtime,
-            **result.best_cost.metrics,
+            **report_metrics,
         }
         if hasattr(result, "accepted_ratio"):
             row["accepted_ratio"] = result.accepted_ratio
@@ -107,8 +121,8 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
 
         print(
             f"[compare] done optimizer={name} runtime={runtime:.2f}s "
-            f"cost={result.best_cost.total:.4f} wl={result.best_cost.metrics['wirelength']:.2f} "
-            f"tmax={result.best_cost.metrics['tmax']:.2f} top5={result.best_cost.metrics['top5']:.2f}"
+            f"cost={result.best_cost.total:.4f} wl={report_metrics['wirelength']:.2f} "
+            f"tmax={report_metrics['tmax']:.2f} top5={report_metrics['top5']:.2f}"
         )
         rows.append(row)
         summary["optimizers"][name] = row
@@ -117,7 +131,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
                 "name": name,
                 "layout": result.best_layout,
                 "temperature": final_temperature,
-                "metrics": result.best_cost.metrics,
+                "metrics": report_metrics,
             }
         )
 
