@@ -17,6 +17,7 @@ from thermopt.data.inputs import CaseInput
 from thermopt.data.pointwise import load_pointwise_cases
 from thermopt.layout.visualization import save_cost_curve, save_final_summary, save_layout_figure, save_temperature_figure
 from thermopt.objective.cost import Objective
+from thermopt.objective.metrics import collect_metrics
 from thermopt.optimizer.simulated_annealing import optimize
 from thermopt.thermal.backend import build_thermal_backend
 
@@ -63,9 +64,14 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
     case = case_input.case
     initial_layout = case_input.layout
     thermal_backend = build_thermal_backend(case, config["thermal"], work_dir=output_dir / "_thermal" / case_input.name)
-    initial_temperature = thermal_backend.simulate(case, initial_layout)
     save_layout_figure(case, initial_layout, output_dir / "initial_layout.png", "Initial layout")
-    save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
+    has_thermal_experiment = any(
+        abs(float(deep_update(config, experiment)["objective"].get("beta", 1.0))) > 1e-12
+        for experiment in config.get("experiments", [])
+    )
+    if has_thermal_experiment:
+        initial_temperature = thermal_backend.simulate(case, initial_layout)
+        save_temperature_figure(initial_temperature, output_dir / "initial_temperature.png", "Initial temperature")
 
     rows: list[dict] = []
     final_results: list[dict] = []
@@ -105,6 +111,17 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         runtime = time.perf_counter() - started
 
         final_temperature = exp_backend.simulate(case, result.best_layout)
+        final_metrics = collect_metrics(
+            case,
+            result.best_layout,
+            final_temperature,
+            thermal_mode=exp_config["objective"].get("thermal_mode", "topk"),
+            topk_percent=float(exp_config["objective"].get("topk_percent", 0.05)),
+            temperature_limit=float(exp_config["objective"].get("temperature_limit", 85.0)),
+        )
+        report_metrics = dict(result.best_cost.metrics)
+        report_metrics.update(final_metrics)
+        report_metrics["total_cost"] = float(result.best_cost.total)
         save_layout_figure(case, result.best_layout, output_dir / f"final_layout_{exp_name}.png", f"Final layout: {exp_name}")
         save_temperature_figure(
             final_temperature,
@@ -118,7 +135,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
             "runtime_sec": runtime,
             "accepted_ratio": result.accepted_ratio,
             "thermal_backend": getattr(exp_backend, "runtime_mode", exp_backend.name),
-            **result.best_cost.metrics,
+            **report_metrics,
         }
         rows.append(row)
         final_results.append(
@@ -126,7 +143,7 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
                 "name": exp_name,
                 "layout": result.best_layout,
                 "temperature": final_temperature,
-                "metrics": result.best_cost.metrics,
+                "metrics": report_metrics,
             }
         )
         summary["experiments"][exp_name] = row

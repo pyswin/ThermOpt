@@ -41,3 +41,11 @@ def collect_metrics(
         "outline_penalty": total_outline_penalty(case, layout),
         "overlap_penalty": total_overlap_penalty(case, layout),
     }
+
+
+def collect_layout_metrics(case: FloorplanCase, layout: Layout) -> dict[str, float]:
+    return {
+        "wirelength": hpwl(case, layout),
+        "outline_penalty": total_outline_penalty(case, layout),
+        "overlap_penalty": total_overlap_penalty(case, layout),
+    }
