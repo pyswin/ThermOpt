@@ -1,14 +1,12 @@
 seed: 17
 output_root: outputs
-experiment_name: optimizer_comparison_rl_0620
+experiment_name: benchmark_wl_only_at_atm_rla_case7
 
 case:
   source: atplace
   data_dir: external/ATPlace_pub/cases
   cases:
-    - Case1
-    - Case2
-    - Case3
+    - Case7
   unit_scale: 0.001
   initial_layout: random
 
@@ -24,7 +22,7 @@ thermal:
 
 objective:
   alpha: 1.0
-  beta: 1.0
+  beta: 0.0
   gamma: 50.0
   delta: 80.0
   thermal_mode: topk
@@ -60,25 +58,33 @@ atmplace:
   final_anneal_temp: 0.001
   report_every: 100
   verbose: false
-  
+
+
 reinforcement_learning:
-  episodes: 1000
-  max_steps: 70
-  rollout_steps: 70
-  move_scale: 1.0
-  hidden_dim: 128
-  learning_rate: 0.0004
+  placement_order: degree_area
+  grid: 64
+  episodes: 500
+  hidden_dim: 64
+  learning_rate: 0.0002
   gamma: 0.97
-  gae_lambda: 0.98
-  ppo_epochs: 10
-  batch_size: 128
-  clip_epsilon: 0.2
+  gae_lambda: 0.95
+  ppo_epochs: 6
+  batch_size: 32
+  clip_epsilon: 0.15
   entropy_coef: 0.001
   critic_coef: 0.5
-  reward_scale: 10.0
-  invalid_placement_penalty: 1.0
   max_grad_norm: 0.5
-  wirelength_weight: 1.0
-  thermal_weight: 1.0
-  outline_penalty_weight: 10.0
-  overlap_penalty_weight: 10.0
+  wire_mask_scale: 80.0
+  reward_scale: 80.0
+  invalid_placement_penalty: 1.0
+  wire_mask_bias: 1.0
+  greedy_wire_mask: true
+  shuffle_placement_order: false
+  verbose: true
+  terminal_reward_coef: 10.0
+  elite_replay_coef: 0.1
+  elite_replay_epochs: 2
+  elite_replay_final_epochs: 20
+  elite_replay_match_epochs: 100
+  elite_replay_match_coef: 1.0
+  elite_replay_margin: 1.0
