@@ -39,7 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tdp_limit", type=float, default=None)
     parser.add_argument("--tdp_limit_ratio", type=float, default=1.25)
 
-    parser.add_argument("--backend", type=str, default="hotspot", choices=["hotspot", "ai"])
+    parser.add_argument("--backend", type=str, default="hotspot", choices=["hotspot", "heuristic", "ai"])
     parser.add_argument("--hotspot_binary", type=str, default="external/ATPlace_pub/thermal/hotspot")
     parser.add_argument("--hotspot_required", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--hotspot_allow_fallback", action=argparse.BooleanOptionalAction, default=False)
