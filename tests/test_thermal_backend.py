@@ -10,7 +10,13 @@ import thermopt.thermal.hotspot as hotspot_module
 from thermopt.thermal.hotspot import _parse_grid_steady, _render_hotspot_config, _write_hotspot_floorplans
 
 
-def test_hotspot_backend_raises_when_binary_is_missing(tmp_path) -> None:
+@pytest.fixture
+def linux_platform(monkeypatch):
+    monkeypatch.setattr(hotspot_module.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(hotspot_module.platform, "machine", lambda: "x86_64")
+
+
+def test_hotspot_backend_raises_when_binary_is_missing(tmp_path, linux_platform) -> None:
     case = FloorplanCase(
         chiplets=(Chiplet("A", 4.0, 4.0, 10.0), Chiplet("B", 4.0, 4.0, 20.0)),
         nets=(),
@@ -34,6 +40,27 @@ def test_hotspot_backend_raises_when_binary_is_missing(tmp_path) -> None:
         ).simulate(case, layout)
 
 
+def test_hotspot_backend_rejects_non_linux_platform(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(hotspot_module.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(hotspot_module.platform, "machine", lambda: "arm64")
+    case = FloorplanCase(
+        chiplets=(Chiplet("A", 4.0, 4.0, 10.0),),
+        nets=(),
+        outline_width=16.0,
+        outline_height=12.0,
+    )
+
+    with pytest.raises(RuntimeError, match="only on Linux"):
+        build_thermal_backend(
+            case,
+            {
+                "backend": "hotspot",
+                "hotspot_binary": "external/ATPlace_pub/thermal/hotspot",
+            },
+            work_dir=tmp_path,
+        )
+
+
 def test_ai_backend_is_reserved_interface(tmp_path) -> None:
     case = FloorplanCase(
         chiplets=(Chiplet("A", 4.0, 4.0, 10.0),),
@@ -50,17 +77,36 @@ def test_ai_backend_is_reserved_interface(tmp_path) -> None:
         backend.simulate(case, layout)
 
 
-def test_hotspot_backend_prefers_compatible_platform_binary(tmp_path, monkeypatch) -> None:
+def test_heuristic_backend_runs_on_non_linux_platform(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(hotspot_module.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(hotspot_module.platform, "machine", lambda: "arm64")
+    case = FloorplanCase(
+        chiplets=(Chiplet("A", 4.0, 4.0, 10.0),),
+        nets=(),
+        outline_width=16.0,
+        outline_height=12.0,
+    )
+    layout = Layout((Placement("A", 4.0, 4.0),))
+
+    backend = build_thermal_backend(
+        case,
+        {"backend": "heuristic", "grid_size": [8, 6], "ambient": 25.0, "scale": 0.05},
+        work_dir=tmp_path,
+    )
+    temperature = backend.simulate(case, layout)
+
+    assert backend.runtime_mode == "heuristic"
+    assert temperature.shape == (6, 8)
+    assert float(np.max(temperature)) > 25.0
+
+
+def test_hotspot_backend_prefers_linux_platform_binary(tmp_path, monkeypatch, linux_platform) -> None:
     vendor_root = tmp_path / "external" / "ATPlace_pub" / "thermal"
     vendor_root.mkdir(parents=True)
     linux_binary = vendor_root / "hotspot"
     linux_binary.write_bytes(b"\x7fELFlinux")
-    mac_binary = vendor_root / "hotspot-darwin-arm64"
-    mac_binary.write_bytes(b"\xcf\xfa\xed\xfe")
 
     monkeypatch.setattr(hotspot_module, "_repo_root", lambda: tmp_path)
-    monkeypatch.setattr(hotspot_module.platform, "system", lambda: "Darwin")
-    monkeypatch.setattr(hotspot_module.platform, "machine", lambda: "arm64")
 
     case = FloorplanCase(chiplets=(Chiplet("A", 4.0, 4.0, 10.0),), nets=(), outline_width=16.0, outline_height=12.0)
     backend = build_thermal_backend(
@@ -72,7 +118,7 @@ def test_hotspot_backend_prefers_compatible_platform_binary(tmp_path, monkeypatc
         work_dir=tmp_path / "work",
     )
 
-    assert backend._binary_path == mac_binary.resolve()
+    assert backend._binary_path == linux_binary.resolve()
 
 
 def test_sa_move_pool_can_disable_rotation() -> None:

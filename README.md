@@ -99,17 +99,15 @@ The thermal backend is controlled by the `thermal` section in a config file:
 
 ```yaml
 thermal:
-  backend: hotspot   # or ai
+  backend: hotspot   # hotspot, heuristic, or ai
   hotspot_binary: external/ATPlace_pub/thermal/hotspot
   hotspot_required: true
   hotspot_allow_fallback: false
 ```
 
-- `backend: hotspot` uses a compatible vendored HotSpot binary when available.
-- `hotspot_binary` can stay pointed at `external/ATPlace_pub/thermal/hotspot`; the resolver first checks platform-specific vendored names before falling back to that path.
-- Current vendored binaries:
-  - `external/ATPlace_pub/thermal/hotspot`: Linux x86-64.
-  - `external/ATPlace_pub/thermal/hotspot-darwin-arm64`: macOS arm64.
+- `backend: hotspot` is supported only on Linux and uses the vendored Linux x86-64 binary at `external/ATPlace_pub/thermal/hotspot` by default.
+- macOS must not be used to generate HotSpot labels. Use `backend: heuristic` on macOS for local smoke tests until the AI backend replaces it, or run HotSpot generation on Linux.
+- `backend: heuristic` is a deterministic analytic approximation based on chiplet power and distance. It is useful for local development, but it is not a HotSpot label source.
 - `backend: hotspot` is the default for thermal runs. If HotSpot is missing or fails, the run raises an error.
 - `backend: ai` is a reserved interface for a future AI thermal simulator. It currently raises `NotImplementedError`.
 - `thermal.grid_size` is the target output resolution. HotSpot grid inputs are rounded up per axis to the next power of two, then resampled back to the requested size.
@@ -212,8 +210,8 @@ python3 scripts/generate_thermal_dataset.py \
 | `--power_shutdown_prob` | Probability of forcing a chiplet to 0 W. |
 | `--min_power_density` / `--max_power_density` | Lower and upper power-density bounds used to clamp random power. |
 | `--tdp_limit` / `--tdp_limit_ratio` | Soft total-power cap for the whole chip. |
-| `--backend` | Thermal backend, `hotspot` or reserved `ai`. |
-| `--hotspot_binary` | Path to the HotSpot executable. Defaults to the vendored path. Platform-specific vendored binaries are preferred automatically when present. |
+| `--backend` | Thermal backend: Linux `hotspot`, development-only `heuristic`, or reserved `ai`. |
+| `--hotspot_binary` | Path to the Linux HotSpot executable. Defaults to the vendored Linux x86-64 binary. |
 | `--hotspot_required` / `--no-hotspot-required` | Fail if the HotSpot binary is missing. Defaults to required. |
 | `--hotspot_allow_fallback` / `--no-hotspot-allow-fallback` | Deprecated compatibility option. HotSpot failures raise errors; no heuristic fallback is used. |
 | `--grid_size NX NY` | Target thermal grid resolution. |

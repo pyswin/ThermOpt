@@ -90,13 +90,7 @@ def _platform_hotspot_names() -> list[str]:
     system = platform.system().lower()
     machine = platform.machine().lower()
     names: list[str] = []
-    if system == "darwin":
-        names.append(f"hotspot-darwin-{machine}")
-        if machine in {"arm64", "aarch64"}:
-            names.append("hotspot-darwin-arm64")
-        elif machine in {"x86_64", "amd64"}:
-            names.append("hotspot-darwin-x86_64")
-    elif system == "linux":
+    if system == "linux":
         names.append(f"hotspot-linux-{machine}")
         if machine in {"x86_64", "amd64"}:
             names.append("hotspot")
@@ -110,15 +104,13 @@ def _is_compatible_binary(path: Path) -> bool:
     if not path.is_file():
         return False
     system = platform.system().lower()
+    if system != "linux":
+        return False
     try:
         header = path.read_bytes()[:4]
     except OSError:
         return False
-    if system == "darwin":
-        return header in {b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xca\xfe\xba\xbe", b"\xcf\xfa\xed\xfe"}
-    if system == "linux":
-        return header == b"\x7fELF"
-    return True
+    return header == b"\x7fELF"
 
 
 def _replace_config_value(lines: list[str], key: str, value: str) -> list[str]:
@@ -337,6 +329,54 @@ def _fill_space(
     return ws
 
 
+def _merge_adjacent_space(items: list[_FlpItem]) -> list[_FlpItem]:
+    if not items:
+        return []
+
+    eps = 1e-12
+
+    def close(first: float, second: float) -> bool:
+        return abs(first - second) < eps
+
+    rows: dict[tuple[float, float, str], list[tuple[float, float]]] = {}
+    for item in items:
+        key = (round(float(item.y), 15), round(float(item.height), 15), item.tail)
+        rows.setdefault(key, []).append((float(item.x), float(item.width)))
+
+    horizontal: list[tuple[float, float, float, float, str]] = []
+    for (y, height, tail), segments in rows.items():
+        segments.sort()
+        current_x, current_width = segments[0]
+        for x, width in segments[1:]:
+            if close(current_x + current_width, x):
+                current_width += width
+            else:
+                horizontal.append((current_x, float(y), current_width, float(height), tail))
+                current_x, current_width = x, width
+        horizontal.append((current_x, float(y), current_width, float(height), tail))
+
+    columns: dict[tuple[float, float, str], list[tuple[float, float]]] = {}
+    for x, y, width, height, tail in horizontal:
+        key = (round(float(x), 15), round(float(width), 15), tail)
+        columns.setdefault(key, []).append((float(y), float(height)))
+
+    merged: list[_FlpItem] = []
+    for (x, width, tail), segments in columns.items():
+        segments.sort()
+        current_y, current_height = segments[0]
+        for y, height in segments[1:]:
+            if close(current_y + current_height, y):
+                current_height += height
+            else:
+                merged.append(
+                    _FlpItem(f"WS_{len(merged)}", float(width), current_height, float(x), current_y, tail)
+                )
+                current_y, current_height = y, height
+        merged.append(_FlpItem(f"WS_{len(merged)}", float(width), current_height, float(x), current_y, tail))
+
+    return merged
+
+
 def _write_hotspot_floorplans(workspace: Path, case: FloorplanCase, layout: Layout, config: dict) -> Path:
     chiplets = case.chiplet_by_id
     width_m, height_m, edge = _hotspot_box(case, layout, config)
@@ -379,8 +419,8 @@ def _write_hotspot_floorplans(workspace: Path, case: FloorplanCase, layout: Layo
         chiplet_items_l4.append(_FlpItem(unit_name, width_chiplet_m, height_chiplet_m, x_left_m, y_bottom_m, silicon_tail))
         sim_items.append(_FlpItem(f"Unit_{len(sim_items)}", width_chiplet_m, height_chiplet_m, x_left_m, y_bottom_m))
 
-    ws_items_l3 = _fill_space(x0, x1, y0, y1, chiplet_items_l3, underfill_tail)
-    ws_items_l4 = _fill_space(x0, x1, y0, y1, chiplet_items_l4, underfill_tail)
+    ws_items_l3 = _merge_adjacent_space(_fill_space(x0, x1, y0, y1, chiplet_items_l3, underfill_tail))
+    ws_items_l4 = _merge_adjacent_space(_fill_space(x0, x1, y0, y1, chiplet_items_l4, underfill_tail))
 
     edge_units: list[_FlpItem] = []
     if edge > 0.0:
@@ -496,6 +536,8 @@ class HotSpotBackend:
     _binary_path: Path | None = field(init=False, default=None, repr=False)
 
     def __post_init__(self) -> None:
+        if platform.system().lower() != "linux":
+            raise RuntimeError("HotSpot backend is supported only on Linux. Use backend=ai on macOS.")
         self._workspace_root = (
             Path(self.work_dir).expanduser().resolve()
             if self.work_dir is not None

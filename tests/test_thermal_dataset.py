@@ -116,3 +116,32 @@ def test_pointwise_generation_marks_background_cells(tmp_path: Path, monkeypatch
     pointwise = output_dir / "pointwise" / "sample_000000.csv"
     lines = pointwise.read_text(encoding="utf-8").splitlines()
     assert any(line.split(",")[2] == "background" and line.split(",")[3] == "0.000000" for line in lines[1:])
+
+
+def test_generate_dataset_with_heuristic_backend_records_runtime(tmp_path: Path) -> None:
+    case_dir = write_atplace_case(tmp_path)
+    output_dir = tmp_path / "dataset"
+
+    generator = ThermalDatasetGenerator(
+        case_dir,
+        {
+            "backend": "heuristic",
+            "grid_size": [8, 8],
+            "ambient": 25.0,
+            "scale": 0.1,
+            "sigma_factor": 1.0,
+        },
+        use_case_config=False,
+        randomize_power=False,
+        randomize_rotation=False,
+        seed=11,
+    )
+
+    generator.generate_dataset(num_samples=1, output_dir=output_dir, variation_type="random", save_formats=["json"])
+
+    summary_payload = json.loads((output_dir / "dataset_summary.json").read_text(encoding="utf-8"))
+    sample_payload = json.loads((output_dir / "json" / "sample_000000.json").read_text(encoding="utf-8"))
+
+    assert summary_payload["thermal_backend"]["runtime_mode"] == "heuristic"
+    assert sample_payload["thermal_backend"]["runtime_mode"] == "heuristic"
+    assert sample_payload["temperature_stats"]["max"] > 25.0
