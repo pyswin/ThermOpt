@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 from typing import Callable
 
 import numpy as np
@@ -43,6 +45,7 @@ class RLResult:
     final_cost: CostResult
     attempted_actions: int
     accepted_actions: int
+    policy_order: tuple[str, ...]
     objective_name: str = "wirelength"
     data_mismatches: tuple[str, ...] = _DATA_MISMATCHES
 
@@ -129,6 +132,30 @@ class _EfficientPlaceActorCritic(nn.Module):
         logits = self.actor(feature).reshape(-1, self.grid * self.grid)
         value = self.critic(feature).squeeze(-1)
         return logits, value
+
+
+class _RunLogger:
+    def __init__(self, output_dir: Path | None, verbose: bool):
+        self.verbose = verbose
+        self.path: Path | None = None
+        if output_dir is None:
+            return
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            self.path = output_dir / "rl_allreward.log"
+        except OSError:
+            self.path = None
+
+    def log(self, message: str, *, console: bool | None = None) -> None:
+        line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
+        if self.path is not None:
+            try:
+                with self.path.open("a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+            except OSError:
+                self.path = None
+        if self.verbose if console is None else console:
+            print(line, flush=True)
 
 
 class _EfficientPlaceEnv:
@@ -357,6 +384,8 @@ def optimize(
     elite_replay_match_coef = float(config.get("elite_replay_match_coef", max(1.0, elite_replay_coef)))
     elite_replay_margin = max(0.0, float(config.get("elite_replay_margin", 1.0)))
     verbose = bool(config.get("verbose", True))
+    output_dir = _resolve_output_dir(config, objective)
+    logger = _RunLogger(output_dir, verbose)
 
     model = _EfficientPlaceActorCritic(grid=grid, num_time_steps=len(order), hidden_dim=hidden_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -378,6 +407,24 @@ def optimize(
     best_order = order
     best_policy_state_dict = _clone_state_dict(model)
     started = time.perf_counter()
+    logger.log(
+        "training_config "
+        f"device={device} episodes={episodes} grid={grid} order_len={len(order)} "
+        f"placement_order={config.get('placement_order', 'degree_area')} "
+        f"shuffle_placement_order={bool(config.get('shuffle_placement_order', False))} "
+        f"learning_rate={learning_rate:.6g} gamma={gamma:.4f} gae_lambda={gae_lambda:.4f} "
+        f"ppo_epochs={ppo_epochs} batch_size={batch_size} clip_epsilon={clip_epsilon:.4f} "
+        f"entropy_coef={entropy_coef:.6f} critic_coef={critic_coef:.4f} max_grad_norm={max_grad_norm:.4f} "
+        f"wire_mask_scale={wire_mask_scale:.4f} reward_scale={reward_scale:.4f} "
+        f"wire_mask_bias={wire_mask_bias:.4f} greedy_wire_mask={greedy_wire_mask} "
+        f"terminal_reward_coef={terminal_reward_coef:.4f} invalid_placement_penalty={invalid_placement_penalty:.4f} "
+        f"elite_replay_coef={elite_replay_coef:.4f} elite_replay_epochs={elite_replay_epochs} "
+        f"elite_replay_final_epochs={elite_replay_final_epochs} "
+        f"elite_replay_match_epochs={elite_replay_match_epochs} "
+        f"elite_replay_match_coef={elite_replay_match_coef:.4f} "
+        f"elite_replay_margin={elite_replay_margin:.4f}",
+        console=False,
+    )
 
     for episode in range(episodes):
         env = _make_env(
@@ -434,7 +481,7 @@ def optimize(
             episode_return += terminal_reward
         episode_is_legal = _is_legal(case, episode_layout)
         episode_improved = episode_is_legal and episode_wirelength < best_selection_wirelength
-        _ppo_update(
+        ppo_stats = _ppo_update(
             model=model,
             optimizer=optimizer,
             buffer=buffer,
@@ -451,11 +498,11 @@ def optimize(
             max_grad_norm=max_grad_norm,
             wire_mask_bias=wire_mask_bias,
             greedy_wire_mask=greedy_wire_mask,
-        )
+        ) or {}
         if episode_improved:
             best_buffer = buffer.clone()
             best_order = order
-        _imitation_update(
+        elite_stats = _imitation_update(
             model=model,
             optimizer=optimizer,
             buffer=best_buffer,
@@ -468,7 +515,7 @@ def optimize(
             wire_mask_bias=wire_mask_bias,
             greedy_wire_mask=greedy_wire_mask,
             margin=elite_replay_margin,
-        )
+        ) or {}
         episode_cost = objective(episode_layout)
         final_layout = episode_layout
         final_cost = episode_cost
@@ -482,19 +529,36 @@ def optimize(
         episode_returns.append(episode_return)
         action_acceptance_curve.append(accepted_actions / max(1, attempted_actions))
         best_curve.append(best_wirelength)
-        if verbose:
-            elapsed = time.perf_counter() - started
-            print(
-                f"[efficientplace] time={elapsed:.2f}s episode={episode + 1}/{episodes} "
-                f"wirelength={episode_wirelength:.2f} best_wirelength={best_wirelength:.2f}",
-                flush=True,
-            )
+        elapsed = time.perf_counter() - started
+        logger.log(
+            f"episode={episode + 1}/{episodes} time={elapsed:.2f}s "
+            f"wirelength={episode_wirelength:.2f} best_wirelength={best_wirelength:.2f} "
+            f"accepted_ratio={accepted_actions / max(1, attempted_actions):.4f} "
+            f"legal={episode_is_legal}"
+        )
+        logger.log(
+            f"training_update episode={episode + 1}/{episodes} "
+            f"return={episode_return:.6f} terminal_reward={terminal_reward:.6f} "
+            f"improved={episode_improved} "
+            f"ppo_batches={int(ppo_stats.get('batches', 0))} "
+            f"ppo_loss={ppo_stats.get('loss', 0.0):.6f} "
+            f"ppo_actor={ppo_stats.get('actor_loss', 0.0):.6f} "
+            f"ppo_critic={ppo_stats.get('critic_loss', 0.0):.6f} "
+            f"ppo_entropy={ppo_stats.get('entropy', 0.0):.6f} "
+            f"ppo_grad_norm={ppo_stats.get('grad_norm', 0.0):.6f} "
+            f"elite_batches={int(elite_stats.get('batches', 0))} "
+            f"elite_loss={elite_stats.get('loss', 0.0):.6f} "
+            f"elite_behavior={elite_stats.get('behavior_loss', 0.0):.6f} "
+            f"elite_margin={elite_stats.get('margin_loss', 0.0):.6f} "
+            f"elite_grad_norm={elite_stats.get('grad_norm', 0.0):.6f}",
+            console=False,
+        )
 
         if config.get("shuffle_placement_order", False):
             fixed_first = int(config.get("fixed_first_macros", 0))
             order = order[:fixed_first] + tuple(rng.permutation(order[fixed_first:]).tolist())
 
-    _imitation_update(
+    final_elite_stats = _imitation_update(
         model=model,
         optimizer=optimizer,
         buffer=best_buffer,
@@ -507,8 +571,8 @@ def optimize(
         wire_mask_bias=wire_mask_bias,
         greedy_wire_mask=greedy_wire_mask,
         margin=elite_replay_margin,
-    )
-    elite_policy_reproduced = _reinforce_elite_until_greedy_match(
+    ) or {}
+    match_stats = _reinforce_elite_until_greedy_match(
         model=model,
         optimizer=optimizer,
         buffer=best_buffer,
@@ -522,10 +586,22 @@ def optimize(
         greedy_wire_mask=greedy_wire_mask,
         margin=elite_replay_margin,
     )
+    elite_policy_reproduced = bool(match_stats.get("reproduced", False))
     if best_buffer is not None and (
         (elite_replay_coef > 0.0 and elite_replay_final_epochs > 0) or elite_policy_reproduced
     ):
         best_policy_state_dict = _clone_state_dict(model)
+    logger.log(
+        "final_elite_replay "
+        f"batches={int(final_elite_stats.get('batches', 0))} "
+        f"loss={final_elite_stats.get('loss', 0.0):.6f} "
+        f"behavior_loss={final_elite_stats.get('behavior_loss', 0.0):.6f} "
+        f"margin_loss={final_elite_stats.get('margin_loss', 0.0):.6f} "
+        f"grad_norm={final_elite_stats.get('grad_norm', 0.0):.6f} "
+        f"match_reproduced={elite_policy_reproduced} "
+        f"match_epochs={int(match_stats.get('epochs', 0))}",
+        console=False,
+    )
 
     rollout_layout, rollout_cost, rollout_wirelength = _greedy_rollout(
         case=case,
@@ -551,6 +627,26 @@ def optimize(
     final_cost = rollout_cost
     if best_curve[-1] != best_wirelength:
         best_curve.append(best_wirelength)
+    logger.log(
+        "final_greedy_rollout "
+        f"wirelength={rollout_wirelength:.2f} best_wirelength={best_wirelength:.2f} "
+        f"legal={_is_legal(case, rollout_layout)} reproduced_best={rollout_wirelength <= best_wirelength + 1e-6} "
+        f"policy_order_len={len(best_order)}"
+    )
+    model_path = _save_policy_artifact(
+        output_dir=output_dir,
+        model=model,
+        best_policy_state_dict=best_policy_state_dict,
+        case=case,
+        grid=grid,
+        hidden_dim=hidden_dim,
+        policy_order=best_order,
+        best_wirelength=best_wirelength,
+        rollout_wirelength=rollout_wirelength,
+        config=config,
+        logger=logger,
+    )
+    logger.log(f"model_saved path={model_path if model_path is not None else 'not_saved'}", console=False)
 
     return RLResult(
         best_layout=best_layout,
@@ -565,11 +661,71 @@ def optimize(
         final_cost=final_cost,
         attempted_actions=attempted_actions,
         accepted_actions=accepted_actions,
+        policy_order=best_order,
     )
 
 
 def _clone_state_dict(model: nn.Module) -> dict[str, torch.Tensor]:
     return {name: value.detach().cpu().clone() for name, value in model.state_dict().items()}
+
+
+def _resolve_output_dir(config: dict, objective: Callable[[Layout], CostResult]) -> Path:
+    for key in ("output_dir", "log_dir", "model_dir"):
+        value = config.get(key)
+        if value:
+            return Path(value).expanduser().resolve()
+
+    backend = getattr(objective, "backend", None)
+    workspace_root = getattr(backend, "_workspace_root", None)
+    if workspace_root is not None:
+        path = Path(workspace_root).expanduser().resolve()
+        return path.parent if path.name == "_thermal" else path
+
+    output_root = Path(str(config.get("output_root", "outputs"))).expanduser()
+    try:
+        candidates = [path for path in output_root.iterdir() if path.is_dir()]
+    except OSError:
+        return output_root.resolve()
+    if candidates:
+        return max(candidates, key=lambda path: path.stat().st_mtime).resolve()
+    return output_root.resolve()
+
+
+def _save_policy_artifact(
+    output_dir: Path,
+    model: _EfficientPlaceActorCritic,
+    best_policy_state_dict: dict[str, torch.Tensor],
+    case: FloorplanCase,
+    grid: int,
+    hidden_dim: int,
+    policy_order: tuple[str, ...],
+    best_wirelength: float,
+    rollout_wirelength: float,
+    config: dict,
+    logger: _RunLogger,
+) -> Path | None:
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = output_dir / "rl_allreward_model.pt"
+        torch.save(
+            {
+                "best_policy_state_dict": best_policy_state_dict,
+                "final_model_state_dict": _clone_state_dict(model),
+                "grid": int(grid),
+                "hidden_dim": int(hidden_dim),
+                "num_time_steps": len(policy_order),
+                "policy_order": tuple(policy_order),
+                "case_chiplet_ids": tuple(case.chiplet_ids),
+                "best_wirelength": float(best_wirelength),
+                "final_greedy_wirelength": float(rollout_wirelength),
+                "config": dict(config),
+                "saved_at": datetime.now().isoformat(timespec="seconds"),
+            },
+            path,
+        )
+        return path
+    except Exception:
+        return None
 
 
 def _select_device() -> torch.device:
@@ -676,9 +832,9 @@ def _ppo_update(
     max_grad_norm: float,
     wire_mask_bias: float,
     greedy_wire_mask: bool,
-) -> None:
+) -> dict[str, float]:
     if len(buffer) == 0:
-        return
+        return {"batches": 0.0}
 
     states = torch.as_tensor(np.stack(buffer.states), dtype=torch.float32, device=device)
     time_steps = torch.as_tensor(buffer.time_steps, dtype=torch.long, device=device)
@@ -695,6 +851,14 @@ def _ppo_update(
         advantages = (advantages - advantages.mean()) / (advantages.std(unbiased=False) + 1e-8)
 
     sample_count = states.shape[0]
+    totals = {
+        "batches": 0.0,
+        "loss": 0.0,
+        "actor_loss": 0.0,
+        "critic_loss": 0.0,
+        "entropy": 0.0,
+        "grad_norm": 0.0,
+    }
     for _ in range(ppo_epochs):
         permutation = torch.randperm(sample_count, device=device)
         for start in range(0, sample_count, batch_size):
@@ -719,8 +883,19 @@ def _ppo_update(
 
             optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            grad_norm = nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             optimizer.step()
+            totals["batches"] += 1.0
+            totals["loss"] += float(loss.detach().item())
+            totals["actor_loss"] += float(actor_loss.detach().item())
+            totals["critic_loss"] += float(critic_loss.detach().item())
+            totals["entropy"] += float(entropy.detach().item())
+            totals["grad_norm"] += float(grad_norm.detach().item() if torch.is_tensor(grad_norm) else grad_norm)
+
+    batches = max(1.0, totals["batches"])
+    for key in ("loss", "actor_loss", "critic_loss", "entropy", "grad_norm"):
+        totals[key] /= batches
+    return totals
 
 
 def _imitation_update(
@@ -736,14 +911,21 @@ def _imitation_update(
     wire_mask_bias: float,
     greedy_wire_mask: bool,
     margin: float,
-) -> None:
+) -> dict[str, float]:
     if buffer is None or len(buffer) == 0 or coef <= 0.0 or epochs <= 0:
-        return
+        return {"batches": 0.0}
 
     states = torch.as_tensor(np.stack(buffer.states), dtype=torch.float32, device=device)
     time_steps = torch.as_tensor(buffer.time_steps, dtype=torch.long, device=device)
     actions = torch.as_tensor(buffer.actions, dtype=torch.long, device=device)
     sample_count = states.shape[0]
+    totals = {
+        "batches": 0.0,
+        "loss": 0.0,
+        "behavior_loss": 0.0,
+        "margin_loss": 0.0,
+        "grad_norm": 0.0,
+    }
 
     for _ in range(epochs):
         permutation = torch.randperm(sample_count, device=device)
@@ -759,6 +941,7 @@ def _imitation_update(
             )
             selected_actions = actions[idx]
             behavior_loss = -distribution.log_prob(selected_actions).mean()
+            margin_loss = torch.zeros((), dtype=behavior_loss.dtype, device=device)
             if margin > 0.0:
                 masked_logits = distribution.logits
                 selected_logits = masked_logits.gather(1, selected_actions.unsqueeze(1)).squeeze(1)
@@ -770,8 +953,18 @@ def _imitation_update(
 
             optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            grad_norm = nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             optimizer.step()
+            totals["batches"] += 1.0
+            totals["loss"] += float(loss.detach().item())
+            totals["behavior_loss"] += float(behavior_loss.detach().item())
+            totals["margin_loss"] += float(margin_loss.detach().item())
+            totals["grad_norm"] += float(grad_norm.detach().item() if torch.is_tensor(grad_norm) else grad_norm)
+
+    batches = max(1.0, totals["batches"])
+    for key in ("loss", "behavior_loss", "margin_loss", "grad_norm"):
+        totals[key] /= batches
+    return totals
 
 
 def _reinforce_elite_until_greedy_match(
@@ -787,9 +980,9 @@ def _reinforce_elite_until_greedy_match(
     wire_mask_bias: float,
     greedy_wire_mask: bool,
     margin: float,
-) -> bool:
+) -> dict[str, float | bool]:
     if buffer is None or len(buffer) == 0:
-        return False
+        return {"reproduced": False, "epochs": 0.0}
     if _greedy_matches_buffer(
         model=model,
         buffer=buffer,
@@ -798,11 +991,11 @@ def _reinforce_elite_until_greedy_match(
         wire_mask_bias=wire_mask_bias,
         greedy_wire_mask=greedy_wire_mask,
     ):
-        return True
+        return {"reproduced": True, "epochs": 0.0}
     if coef <= 0.0 or max_epochs <= 0:
-        return False
+        return {"reproduced": False, "epochs": 0.0}
 
-    for _ in range(max_epochs):
+    for epoch in range(max_epochs):
         _imitation_update(
             model=model,
             optimizer=optimizer,
@@ -825,8 +1018,8 @@ def _reinforce_elite_until_greedy_match(
             wire_mask_bias=wire_mask_bias,
             greedy_wire_mask=greedy_wire_mask,
         ):
-            return True
-    return False
+            return {"reproduced": True, "epochs": float(epoch + 1)}
+    return {"reproduced": False, "epochs": float(max_epochs)}
 
 
 def _greedy_matches_buffer(
