@@ -1,0 +1,66 @@
+seed: 17
+output_root: outputs
+experiment_name: rl_refinement
+
+case:
+  source: atplace
+  data_dir: external/ATPlace_pub/cases
+  cases:
+    - Case1
+    - Case3
+  unit_scale: 0.001
+  initial_layout: random
+
+thermal:
+  backend: heuristic
+  grid_size: [64, 64]
+  ambient: 25.0
+  scale: 0.05
+  sigma_factor: 1.0
+
+objective:
+  alpha: 1.0
+  beta: 0.0
+  gamma: 50.0
+  delta: 80.0
+  thermal_mode: topk
+  topk_percent: 0.05
+  temperature_limit: 85.0
+
+baseline_optimizer: atplace
+
+atplace:
+  milp_time_limit: 60
+  mip_rel_gap: 0.001
+  refine_steps: 300
+  learning_rate: 0.015
+  wl_weight: 1.0
+  density_weight: 8000.0
+  outline_weight: 30000.0
+  legal_perturb_iterations: 1000
+  initial_anneal_temp: 0.4
+  final_anneal_temp: 0.002
+  report_every: 100
+  verbose: false
+
+rl_local_search:
+  num_candidates: 20
+  total_steps: 600
+  epsilon_start: 0.1
+  epsilon_end: 0.02
+  hidden_dim: 64
+  learning_rate: 0.001
+  gamma: 0.99
+  buffer_capacity: 8000
+  batch_size: 32
+  train_after: 40
+  target_update_freq: 10
+  tau: 0.01
+  per_alpha: 0.6
+  per_beta_start: 0.4
+  per_beta_end: 1.0
+  reject_penalty: -0.01
+  suboptimal_accept_penalty: -0.01
+  move_scale: 0.5
+  restart_interval: 100
+  report_every: 50
