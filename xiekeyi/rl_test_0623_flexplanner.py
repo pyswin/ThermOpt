@@ -19,15 +19,15 @@ from thermopt.objective.cost import CostResult
 
 
 _DATA_MISMATCHES = (
-    "EfficientPlace reads a PlaceDB benchmark with ranked macros and detailed node/net metadata; "
-    "ThermOpt provides FloorplanCase chiplets/nets directly.",
-    "EfficientPlace places on a native square grid; ThermOpt layouts use continuous outline units, "
-    "so this optimizer discretizes the outline to a grid and maps actions back to continuous x/y.",
-    "EfficientPlace constructs a placement from an empty canvas; ThermOpt passes an initial_layout for "
-    "the optimizer interface, which is used here as the baseline/fallback, not as the policy state.",
-    "EfficientPlace optimizes HPWL-style wirelength reward; ThermOpt Objective can include thermal cost, "
-    "but this file uses Objective only to return CostResult for the selected wirelength-best layout.",
-    "EfficientPlace does not model chiplet rotation; this migration keeps rotation at 0 during placement.",
+    "FlexPlanner trains on its own Block/Terminal/Net floorplan model; ThermOpt provides FloorplanCase "
+    "chiplets and nets directly, so this file builds an equivalent in-memory grid environment.",
+    "FlexPlanner supports 3D layers, async layer choice, alignment constraints, and aspect-ratio actions; "
+    "this ThermOpt migration keeps the requested 2D fixed-size chiplet placement action space.",
+    "FlexPlanner uses a grid canvas, position mask, and wiremask observation; ThermOpt layouts are "
+    "continuous, so actions are mapped from grid cells back to continuous outline coordinates.",
+    "FlexPlanner can optimize mixed HPWL/overlap/alignment rewards; this migration targets HPWL-style "
+    "wirelength placement and uses Objective only to report CostResult for the selected layout.",
+    "FlexPlanner does not require chiplet rotation for the migrated flow; rotation stays fixed at 0.",
 )
 
 
@@ -97,28 +97,40 @@ class _RolloutBuffer:
         )
 
 
-class _EfficientPlaceActorCritic(nn.Module):
-    """Small EfficientPlace-style actor/critic for ThermOpt's variable grid sizes."""
+class _FlexPlannerActorCritic(nn.Module):
+    """FlexPlanner-style shared/local encoder actor-critic for a 2D position action."""
 
     def __init__(self, grid: int, num_time_steps: int, hidden_dim: int):
         super().__init__()
         self.grid = grid
         self.num_time_steps = num_time_steps
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, hidden_dim, kernel_size=3, padding=1),
+        self.shared_encoder = nn.Sequential(
+            nn.Conv2d(3, max(8, hidden_dim // 2), kernel_size=3, padding=1),
+            nn.BatchNorm2d(max(8, hidden_dim // 2)),
             nn.GELU(),
-            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1),
+            nn.Conv2d(max(8, hidden_dim // 2), hidden_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(hidden_dim),
+            nn.GELU(),
+            nn.AdaptiveMaxPool2d(1),
+            nn.Flatten(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
         )
         self.time_embedding = nn.Embedding(num_time_steps + 1, hidden_dim)
-        self.actor = nn.Sequential(
-            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1),
+        self.global_decoder = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
-            nn.Conv2d(hidden_dim, 1, kernel_size=1),
+            nn.Linear(hidden_dim, grid * grid),
         )
+        self.local_encoder = nn.Sequential(
+            nn.Conv2d(3, 4, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(4, 8, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(8, 1, kernel_size=3, padding=1),
+        )
+        self.fusion = nn.Conv2d(2, 1, kernel_size=1)
         self.critic = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.Tanh(),
             nn.Linear(hidden_dim, 1),
@@ -126,11 +138,11 @@ class _EfficientPlaceActorCritic(nn.Module):
 
     def forward(self, state: torch.Tensor, time_step: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         time_step = torch.clamp(time_step, min=0, max=self.num_time_steps)
-        feature = self.encoder(state)
-        time_feature = self.time_embedding(time_step).unsqueeze(-1).unsqueeze(-1)
-        feature = feature + time_feature
-        logits = self.actor(feature).reshape(-1, self.grid * self.grid)
-        value = self.critic(feature).squeeze(-1)
+        global_feature = self.shared_encoder(state) + self.time_embedding(time_step)
+        global_score = self.global_decoder(global_feature).reshape(-1, 1, self.grid, self.grid)
+        local_score = self.local_encoder(state)
+        logits = self.fusion(torch.cat([global_score, local_score], dim=1)).reshape(-1, self.grid * self.grid)
+        value = self.critic(global_feature).squeeze(-1)
         return logits, value
 
 
@@ -142,7 +154,7 @@ class _RunLogger:
             return
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
-            self.path = output_dir / "rl_allreward.log"
+            self.path = output_dir / "rl_flexplanner.log"
         except OSError:
             self.path = None
 
@@ -158,7 +170,7 @@ class _RunLogger:
             print(line, flush=True)
 
 
-class _EfficientPlaceEnv:
+class _FlexPlannerEnv:
     def __init__(
         self,
         case: FloorplanCase,
@@ -167,6 +179,9 @@ class _EfficientPlaceEnv:
         wire_mask_scale: float,
         reward_scale: float,
         invalid_placement_penalty: float,
+        overlap_reward_coef: float,
+        along_boundary: bool,
+        overlap_ratio: float,
     ):
         self.case = case
         self.order = order
@@ -176,6 +191,9 @@ class _EfficientPlaceEnv:
         self.wire_mask_scale = max(wire_mask_scale, 1e-9)
         self.reward_scale = max(reward_scale, 1e-9)
         self.invalid_placement_penalty = invalid_placement_penalty
+        self.overlap_reward_coef = overlap_reward_coef
+        self.along_boundary = along_boundary
+        self.overlap_ratio = max(0.0, min(float(overlap_ratio), 0.49))
         self.chiplets = case.chiplet_by_id
         self.size_cells = {
             chiplet.id: (
@@ -203,6 +221,7 @@ class _EfficientPlaceEnv:
         self.canvas = np.zeros((self.grid, self.grid), dtype=np.float32)
         self.placements: dict[str, tuple[int, int]] = {}
         self.net_bounds: dict[int, tuple[float, float, float, float]] = {}
+        self.last_overlap_penalty = 0.0
         self.state = self._observation()
         return self.state
 
@@ -215,6 +234,8 @@ class _EfficientPlaceEnv:
             return self.state, 0.0, True, {
                 "valid": False,
                 "wirelength_increment": 0.0,
+                "overlap_penalty": self.last_overlap_penalty,
+                "overlap_delta": 0.0,
                 "no_valid_action": False,
                 "failed": self.failed,
             }
@@ -229,13 +250,20 @@ class _EfficientPlaceEnv:
 
         if valid:
             self._place(chiplet_id, cell_x, cell_y)
-            reward = -wirelength_increment / self.reward_scale
+            overlap_penalty = self._grid_overlap_penalty()
+            overlap_delta = self.last_overlap_penalty - overlap_penalty
+            self.last_overlap_penalty = overlap_penalty
+            reward = -wirelength_increment / self.reward_scale + self.overlap_reward_coef * overlap_delta
             self.t += 1
         elif not has_valid_action:
             self.failed = True
             self.failure_reason = "no_valid_action"
+            overlap_penalty = self.last_overlap_penalty
+            overlap_delta = 0.0
             reward = -self.invalid_placement_penalty
         else:
+            overlap_penalty = self.last_overlap_penalty
+            overlap_delta = 0.0
             reward = -self.invalid_placement_penalty
 
         done = self.is_done()
@@ -247,6 +275,8 @@ class _EfficientPlaceEnv:
             {
                 "valid": bool(valid),
                 "wirelength_increment": float(wirelength_increment),
+                "overlap_penalty": float(overlap_penalty),
+                "overlap_delta": float(overlap_delta),
                 "no_valid_action": not has_valid_action,
                 "failed": self.failed,
             },
@@ -281,14 +311,138 @@ class _EfficientPlaceEnv:
         return np.stack([self.canvas.copy(), wire_mask, position_mask], axis=0).astype(np.float32)
 
     def _position_mask(self, size_x: int, size_y: int) -> np.ndarray:
+        if size_x > self.grid or size_y > self.grid:
+            return np.ones((self.grid, self.grid), dtype=np.float32)
+
+        tight_mask = self._candidate_position_mask(
+            size_x=size_x,
+            size_y=size_y,
+            along_boundary=self.along_boundary,
+            overlap_ratio=self.overlap_ratio,
+        )
+        if np.any(tight_mask < 0.5):
+            return tight_mask
+
+        loose_mask = self._candidate_position_mask(
+            size_x=size_x,
+            size_y=size_y,
+            along_boundary=False,
+            overlap_ratio=self.overlap_ratio,
+        )
+        if np.any(loose_mask < 0.5):
+            return loose_mask
+
+        boundary_mask = self._boundary_mask(size_x, size_y)
+        if np.any(boundary_mask < 0.5):
+            return boundary_mask
+        return tight_mask
+
+    def _candidate_position_mask(
+        self,
+        size_x: int,
+        size_y: int,
+        along_boundary: bool,
+        overlap_ratio: float,
+    ) -> np.ndarray:
+        """FlexPlanner-style mask: 0 means available, 1 means unavailable."""
         mask = np.ones((self.grid, self.grid), dtype=np.float32)
         if size_x > self.grid or size_y > self.grid:
             return mask
-        for cell_x in range(0, self.grid - size_x + 1):
-            for cell_y in range(0, self.grid - size_y + 1):
-                if not np.any(self.canvas[cell_x : cell_x + size_x, cell_y : cell_y + size_y] > 0.0):
-                    mask[cell_x, cell_y] = 0.0
+
+        overlap_x1 = round(size_x * overlap_ratio)
+        overlap_y1 = round(size_y * overlap_ratio)
+        if not along_boundary:
+            mask.fill(0.0)
+        else:
+            for placed_id, (placed_x, placed_y) in self.placements.items():
+                placed_size_x, placed_size_y = self.size_cells[placed_id]
+                overlap_x2 = round(placed_size_x * overlap_ratio)
+                overlap_y2 = round(placed_size_y * overlap_ratio)
+                min_overlap_x = min(overlap_x1, overlap_x2)
+                min_overlap_y = min(overlap_y1, overlap_y2)
+
+                self._set_mask_slice(
+                    mask,
+                    placed_x - size_x + 1,
+                    placed_x + placed_size_x,
+                    placed_y + placed_size_y - min_overlap_y,
+                    placed_y + placed_size_y + 1,
+                    0.0,
+                )
+                self._set_mask_slice(
+                    mask,
+                    placed_x - size_x + 1,
+                    placed_x + placed_size_x,
+                    placed_y - size_y,
+                    placed_y - size_y + min_overlap_y + 1,
+                    0.0,
+                )
+                self._set_mask_slice(
+                    mask,
+                    placed_x - size_x,
+                    placed_x - size_x + min_overlap_x + 1,
+                    placed_y - size_y + 1,
+                    placed_y + placed_size_y,
+                    0.0,
+                )
+                self._set_mask_slice(
+                    mask,
+                    placed_x + placed_size_x - min_overlap_x,
+                    placed_x + placed_size_x + 1,
+                    placed_y - size_y + 1,
+                    placed_y + placed_size_y,
+                    0.0,
+                )
+
+            mask[0, :] = 0.0
+            mask[self.grid - size_x, :] = 0.0
+            mask[:, 0] = 0.0
+            mask[:, self.grid - size_y] = 0.0
+
+        for placed_id, (placed_x, placed_y) in self.placements.items():
+            placed_size_x, placed_size_y = self.size_cells[placed_id]
+            overlap_x2 = round(placed_size_x * overlap_ratio)
+            overlap_y2 = round(placed_size_y * overlap_ratio)
+            min_overlap_x = min(overlap_x1, overlap_x2)
+            min_overlap_y = min(overlap_y1, overlap_y2)
+
+            self._set_mask_slice(
+                mask,
+                placed_x - size_x + min_overlap_x + 1,
+                placed_x + placed_size_x - min_overlap_x,
+                placed_y - size_y + min_overlap_y + 1,
+                placed_y + placed_size_y - min_overlap_y,
+                1.0,
+            )
+
+        mask[self.grid - size_x + 1 :, :] = 1.0
+        mask[:, self.grid - size_y + 1 :] = 1.0
         return mask
+
+    def _boundary_mask(self, size_x: int, size_y: int) -> np.ndarray:
+        mask = np.zeros((self.grid, self.grid), dtype=np.float32)
+        if size_x > self.grid or size_y > self.grid:
+            mask.fill(1.0)
+            return mask
+        mask[self.grid - size_x + 1 :, :] = 1.0
+        mask[:, self.grid - size_y + 1 :] = 1.0
+        return mask
+
+    def _set_mask_slice(
+        self,
+        mask: np.ndarray,
+        start_x: int,
+        end_x: int,
+        start_y: int,
+        end_y: int,
+        value: float,
+    ) -> None:
+        start_x = max(0, min(self.grid, int(start_x)))
+        end_x = max(0, min(self.grid, int(end_x)))
+        start_y = max(0, min(self.grid, int(start_y)))
+        end_y = max(0, min(self.grid, int(end_y)))
+        if start_x < end_x and start_y < end_y:
+            mask[start_x:end_x, start_y:end_y] = value
 
     def _wire_mask(self, chiplet_id: str, position_mask: np.ndarray) -> np.ndarray:
         mask = np.zeros((self.grid, self.grid), dtype=np.float32)
@@ -314,15 +468,12 @@ class _EfficientPlaceEnv:
 
     def _place(self, chiplet_id: str, cell_x: int, cell_y: int) -> None:
         size_x, size_y = self.size_cells[chiplet_id]
-        self.canvas[cell_x : cell_x + size_x, cell_y : cell_y + size_y] = 1.0
-        self.canvas[cell_x : cell_x + size_x, cell_y] = 0.5
-        self.canvas[cell_x, cell_y : cell_y + size_y] = 0.5
-        if cell_x + size_x - 1 < self.grid:
-            self.canvas[cell_x + size_x - 1, cell_y : cell_y + size_y] = 0.5
-        if cell_y + size_y - 1 < self.grid:
-            self.canvas[cell_x : cell_x + size_x, cell_y + size_y - 1] = 0.5
+        self.canvas[cell_x : cell_x + size_x, cell_y : cell_y + size_y] += 1.0
         self.placements[chiplet_id] = (cell_x, cell_y)
         self._update_net_bounds(chiplet_id, cell_x, cell_y)
+
+    def _grid_overlap_penalty(self) -> float:
+        return float(np.maximum(self.canvas - 1.0, 0.0).sum() / max(1, self.grid * self.grid))
 
     def _update_net_bounds(self, chiplet_id: str, cell_x: int, cell_y: int) -> None:
         for net_index in self.net_indices_by_chiplet[chiplet_id]:
@@ -378,10 +529,19 @@ def optimize(
     wire_mask_scale = float(config.get("wire_mask_scale", max(case.outline_width + case.outline_height, 1.0)))
     reward_scale = float(config.get("reward_scale", max(wire_mask_scale, 1.0)))
     invalid_placement_penalty = float(config.get("invalid_placement_penalty", 1.0))
+    overlap_reward_coef = float(config.get("reward_weight_overlap", 0.5))
     wire_mask_bias = float(config.get("wire_mask_bias", 1.0))
-    greedy_wire_mask = bool(config.get("greedy_wire_mask", True))
+    greedy_wire_mask = bool(config.get("greedy_wire_mask", False))
+    along_boundary = bool(config.get("along_boundary", True))
+    overlap_ratio = float(config.get("overlap_ratio", 0.0))
     terminal_reward_coef = float(config.get("terminal_reward_coef", 10.0))
     illegal_terminal_penalty = float(config.get("illegal_terminal_penalty", invalid_placement_penalty * len(order)))
+    terminal_overlap_penalty_coef = float(config.get("terminal_overlap_penalty_coef", 80.0))
+    terminal_outline_penalty_coef = float(config.get("terminal_outline_penalty_coef", 80.0))
+    selection_overlap_penalty_coef = float(config.get("selection_overlap_penalty_coef", terminal_overlap_penalty_coef))
+    selection_outline_penalty_coef = float(config.get("selection_outline_penalty_coef", terminal_outline_penalty_coef))
+    max_selection_overlap_penalty = float(config.get("max_selection_overlap_penalty", 0.02))
+    max_selection_outline_penalty = float(config.get("max_selection_outline_penalty", 1e-9))
     elite_replay_coef = float(config.get("elite_replay_coef", 0.05))
     elite_replay_epochs = max(0, int(config.get("elite_replay_epochs", 1)))
     default_final_replay_epochs = max(5, elite_replay_epochs) if elite_replay_epochs > 0 else 0
@@ -394,15 +554,33 @@ def optimize(
     output_dir = _resolve_output_dir(config, objective)
     logger = _RunLogger(output_dir, verbose)
 
-    model = _EfficientPlaceActorCritic(grid=grid, num_time_steps=len(order), hidden_dim=hidden_dim).to(device)
+    model = _FlexPlannerActorCritic(grid=grid, num_time_steps=len(order), hidden_dim=hidden_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     initial_wirelength = _wirelength(case, initial_layout)
+    initial_overlap_penalty, initial_outline_penalty = _layout_penalties(case, initial_layout)
     initial_cost = objective(initial_layout)
     best_layout = initial_layout
     best_cost = initial_cost
     best_wirelength = initial_wirelength
-    best_selection_wirelength = initial_wirelength if _is_legal(case, initial_layout) else float("inf")
+    initial_selectable = _is_selectable(
+        overlap_penalty=initial_overlap_penalty,
+        outline_penalty=initial_outline_penalty,
+        max_overlap_penalty=max_selection_overlap_penalty,
+        max_outline_penalty=max_selection_outline_penalty,
+    )
+    best_selection_score = (
+        _selection_score(
+            wirelength=initial_wirelength,
+            overlap_penalty=initial_overlap_penalty,
+            outline_penalty=initial_outline_penalty,
+            reference_wirelength=initial_wirelength,
+            overlap_coef=selection_overlap_penalty_coef,
+            outline_coef=selection_outline_penalty_coef,
+        )
+        if initial_selectable
+        else float("inf")
+    )
     best_curve = [best_wirelength]
     episode_returns: list[float] = []
     action_acceptance_curve: list[float] = []
@@ -417,15 +595,23 @@ def optimize(
     logger.log(
         "training_config "
         f"device={device} episodes={episodes} grid={grid} order_len={len(order)} "
-        f"placement_order={config.get('placement_order', 'degree_area')} "
+        f"placement_order={config.get('placement_order', 'area')} "
         f"shuffle_placement_order={bool(config.get('shuffle_placement_order', False))} "
         f"learning_rate={learning_rate:.6g} gamma={gamma:.4f} gae_lambda={gae_lambda:.4f} "
         f"ppo_epochs={ppo_epochs} batch_size={batch_size} clip_epsilon={clip_epsilon:.4f} "
         f"entropy_coef={entropy_coef:.6f} critic_coef={critic_coef:.4f} max_grad_norm={max_grad_norm:.4f} "
         f"wire_mask_scale={wire_mask_scale:.4f} reward_scale={reward_scale:.4f} "
+        f"overlap_reward_coef={overlap_reward_coef:.4f} "
         f"wire_mask_bias={wire_mask_bias:.4f} greedy_wire_mask={greedy_wire_mask} "
+        f"along_boundary={along_boundary} overlap_ratio={overlap_ratio:.4f} "
         f"terminal_reward_coef={terminal_reward_coef:.4f} invalid_placement_penalty={invalid_placement_penalty:.4f} "
         f"illegal_terminal_penalty={illegal_terminal_penalty:.4f} "
+        f"terminal_overlap_penalty_coef={terminal_overlap_penalty_coef:.4f} "
+        f"terminal_outline_penalty_coef={terminal_outline_penalty_coef:.4f} "
+        f"selection_overlap_penalty_coef={selection_overlap_penalty_coef:.4f} "
+        f"selection_outline_penalty_coef={selection_outline_penalty_coef:.4f} "
+        f"max_selection_overlap_penalty={max_selection_overlap_penalty:.8f} "
+        f"max_selection_outline_penalty={max_selection_outline_penalty:.8f} "
         f"elite_replay_coef={elite_replay_coef:.4f} elite_replay_epochs={elite_replay_epochs} "
         f"elite_replay_final_epochs={elite_replay_final_epochs} "
         f"elite_replay_match_epochs={elite_replay_match_epochs} "
@@ -442,6 +628,9 @@ def optimize(
             wire_mask_scale=wire_mask_scale,
             reward_scale=reward_scale,
             invalid_placement_penalty=invalid_placement_penalty,
+            overlap_reward_coef=overlap_reward_coef,
+            along_boundary=along_boundary,
+            overlap_ratio=overlap_ratio,
         )
         state_np = env.reset()
         buffer = _RolloutBuffer()
@@ -449,6 +638,7 @@ def optimize(
         episode_attempted_actions = 0
         episode_accepted_actions = 0
         episode_wirelength_increment = 0.0
+        episode_overlap_delta = 0.0
         done = False
 
         while not done:
@@ -484,22 +674,39 @@ def optimize(
                 accepted_actions += 1
                 episode_accepted_actions += 1
             episode_wirelength_increment += float(info.get("wirelength_increment", 0.0))
+            episode_overlap_delta += float(info.get("overlap_delta", 0.0))
             episode_return += float(reward)
             state_np = next_state_np
 
         episode_layout = env.layout(initial_layout)
         episode_wirelength = _wirelength(case, episode_layout)
+        episode_overlap_penalty, episode_outline_penalty = _layout_penalties(case, episode_layout)
         episode_failed = bool(env.failed)
-        episode_is_legal = (not episode_failed) and _is_legal(case, episode_layout)
+        episode_is_selectable = (not episode_failed) and _is_selectable(
+            overlap_penalty=episode_overlap_penalty,
+            outline_penalty=episode_outline_penalty,
+            max_overlap_penalty=max_selection_overlap_penalty,
+            max_outline_penalty=max_selection_outline_penalty,
+        )
+        episode_selection_score = _selection_score(
+            wirelength=episode_wirelength,
+            overlap_penalty=episode_overlap_penalty,
+            outline_penalty=episode_outline_penalty,
+            reference_wirelength=initial_wirelength,
+            overlap_coef=selection_overlap_penalty_coef,
+            outline_coef=selection_outline_penalty_coef,
+        )
         terminal_hpwl_reward = 0.0
-        if episode_is_legal:
+        if not episode_failed:
             terminal_hpwl_reward = terminal_reward_coef * (initial_wirelength - episode_wirelength) / max(initial_wirelength, 1e-9)
-        illegal_penalty = illegal_terminal_penalty if not episode_is_legal else 0.0
-        terminal_reward = terminal_hpwl_reward - illegal_penalty
+        terminal_overlap_penalty = terminal_overlap_penalty_coef * episode_overlap_penalty
+        terminal_outline_penalty = terminal_outline_penalty_coef * episode_outline_penalty
+        illegal_penalty = illegal_terminal_penalty if not episode_is_selectable else 0.0
+        terminal_reward = terminal_hpwl_reward - terminal_overlap_penalty - terminal_outline_penalty - illegal_penalty
         if len(buffer) > 0:
             buffer.rewards[-1] += terminal_reward
             episode_return += terminal_reward
-        episode_improved = episode_is_legal and episode_wirelength < best_selection_wirelength
+        episode_improved = episode_is_selectable and episode_selection_score < best_selection_score
         ppo_stats = _ppo_update(
             model=model,
             optimizer=optimizer,
@@ -542,7 +749,7 @@ def optimize(
             best_layout = episode_layout
             best_cost = episode_cost
             best_wirelength = episode_wirelength
-            best_selection_wirelength = episode_wirelength
+            best_selection_score = episode_selection_score
             best_policy_state_dict = _clone_state_dict(model)
 
         episode_returns.append(episode_return)
@@ -555,22 +762,31 @@ def optimize(
         )
         logger.log(
             f"episode_debug episode={episode + 1}/{episodes} "
-            f"wirelength_delta={episode_wirelength - initial_wirelength:.6f} "
-            f"wirelength_norm={episode_wirelength / max(initial_wirelength, 1e-9):.6f} "
-            f"best_selection_wirelength={best_selection_wirelength:.6f} "
+            f"selection_score={episode_selection_score:.6f} best_selection_score={best_selection_score:.6f} "
+            f"overlap_penalty={episode_overlap_penalty:.8f} "
+            f"outline_penalty={episode_outline_penalty:.8f} "
+            f"score_wirelength_norm={episode_wirelength / max(initial_wirelength, 1e-9):.6f} "
+            f"score_overlap_component={selection_overlap_penalty_coef * episode_overlap_penalty:.6f} "
+            f"score_outline_component={selection_outline_penalty_coef * episode_outline_penalty:.6f} "
             f"episode_attempted={episode_attempted_actions} "
             f"episode_accepted={episode_accepted_actions} "
             f"episode_invalid={episode_attempted_actions - episode_accepted_actions} "
             f"episode_accepted_ratio={episode_accepted_actions / max(1, episode_attempted_actions):.4f} "
             f"accepted_ratio={accepted_actions / max(1, attempted_actions):.4f} "
             f"wirelength_increment_sum={episode_wirelength_increment:.6f} "
-            f"legal={episode_is_legal}",
+            f"overlap_delta_sum={episode_overlap_delta:.8f} "
+            f"max_overlap_allowed={max_selection_overlap_penalty:.8f} "
+            f"max_outline_allowed={max_selection_outline_penalty:.8f} "
+            f"selectable={episode_is_selectable}",
             console=False,
         )
         logger.log(
             f"training_update episode={episode + 1}/{episodes} "
             f"return={episode_return:.6f} terminal_reward={terminal_reward:.6f} "
-            f"terminal_hpwl_reward={terminal_hpwl_reward:.6f} illegal_penalty={illegal_penalty:.6f} "
+            f"hpwl_reward={terminal_hpwl_reward:.6f} "
+            f"overlap_penalty={terminal_overlap_penalty:.6f} "
+            f"outline_penalty={terminal_outline_penalty:.6f} "
+            f"illegal_penalty={illegal_penalty:.6f} "
             f"improved={episode_improved} "
             f"failed={episode_failed} failure_reason={env.failure_reason or 'none'} "
             f"placed={len(env.placements)}/{len(order)} "
@@ -637,7 +853,7 @@ def optimize(
         console=False,
     )
 
-    rollout_layout, rollout_cost, rollout_wirelength, rollout_is_legal, rollout_placed_count = _greedy_rollout(
+    rollout_layout, rollout_cost, rollout_wirelength, _rollout_is_legal, rollout_placed_count = _greedy_rollout(
         case=case,
         initial_layout=initial_layout,
         objective=objective,
@@ -648,14 +864,32 @@ def optimize(
         wire_mask_scale=wire_mask_scale,
         reward_scale=reward_scale,
         invalid_placement_penalty=invalid_placement_penalty,
+        overlap_reward_coef=overlap_reward_coef,
+        along_boundary=along_boundary,
+        overlap_ratio=overlap_ratio,
         wire_mask_bias=wire_mask_bias,
         greedy_wire_mask=greedy_wire_mask,
     )
-    if rollout_is_legal and rollout_wirelength < best_selection_wirelength:
+    rollout_overlap_penalty, rollout_outline_penalty = _layout_penalties(case, rollout_layout)
+    rollout_is_selectable = _is_selectable(
+        overlap_penalty=rollout_overlap_penalty,
+        outline_penalty=rollout_outline_penalty,
+        max_overlap_penalty=max_selection_overlap_penalty,
+        max_outline_penalty=max_selection_outline_penalty,
+    )
+    rollout_selection_score = _selection_score(
+        wirelength=rollout_wirelength,
+        overlap_penalty=rollout_overlap_penalty,
+        outline_penalty=rollout_outline_penalty,
+        reference_wirelength=initial_wirelength,
+        overlap_coef=selection_overlap_penalty_coef,
+        outline_coef=selection_outline_penalty_coef,
+    )
+    if rollout_is_selectable and rollout_selection_score < best_selection_score:
         best_layout = rollout_layout
         best_cost = rollout_cost
         best_wirelength = rollout_wirelength
-        best_selection_wirelength = rollout_wirelength
+        best_selection_score = rollout_selection_score
         best_policy_state_dict = _clone_state_dict(model)
     final_layout = rollout_layout
     final_cost = rollout_cost
@@ -669,11 +903,16 @@ def optimize(
     )
     logger.log(
         "final_greedy_rollout_debug "
-        f"wirelength_delta={rollout_wirelength - initial_wirelength:.6f} "
-        f"wirelength_norm={rollout_wirelength / max(initial_wirelength, 1e-9):.6f} "
-        f"best_selection_wirelength={best_selection_wirelength:.6f} "
-        f"legal={rollout_is_legal} "
-        f"reproduced_best={rollout_wirelength <= best_wirelength + 1e-6} "
+        f"selection_score={rollout_selection_score:.6f} best_selection_score={best_selection_score:.6f} "
+        f"overlap_penalty={rollout_overlap_penalty:.8f} "
+        f"outline_penalty={rollout_outline_penalty:.8f} "
+        f"score_wirelength_norm={rollout_wirelength / max(initial_wirelength, 1e-9):.6f} "
+        f"score_overlap_component={selection_overlap_penalty_coef * rollout_overlap_penalty:.6f} "
+        f"score_outline_component={selection_outline_penalty_coef * rollout_outline_penalty:.6f} "
+        f"max_overlap_allowed={max_selection_overlap_penalty:.8f} "
+        f"max_outline_allowed={max_selection_outline_penalty:.8f} "
+        f"selectable={rollout_is_selectable} "
+        f"reproduced_best={rollout_selection_score <= best_selection_score + 1e-9} "
         f"placed={rollout_placed_count}/{len(best_order)} "
         f"policy_order_len={len(best_order)}",
         console=False,
@@ -687,7 +926,9 @@ def optimize(
         hidden_dim=hidden_dim,
         policy_order=best_order,
         best_wirelength=best_wirelength,
+        best_selection_score=best_selection_score,
         rollout_wirelength=rollout_wirelength,
+        rollout_selection_score=rollout_selection_score,
         config=config,
         logger=logger,
     )
@@ -738,20 +979,22 @@ def _resolve_output_dir(config: dict, objective: Callable[[Layout], CostResult])
 
 def _save_policy_artifact(
     output_dir: Path,
-    model: _EfficientPlaceActorCritic,
+    model: _FlexPlannerActorCritic,
     best_policy_state_dict: dict[str, torch.Tensor],
     case: FloorplanCase,
     grid: int,
     hidden_dim: int,
     policy_order: tuple[str, ...],
     best_wirelength: float,
+    best_selection_score: float,
     rollout_wirelength: float,
+    rollout_selection_score: float,
     config: dict,
     logger: _RunLogger,
 ) -> Path | None:
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
-        path = output_dir / "rl_allreward_model.pt"
+        path = output_dir / "rl_flexplanner_model.pt"
         torch.save(
             {
                 "best_policy_state_dict": best_policy_state_dict,
@@ -762,7 +1005,9 @@ def _save_policy_artifact(
                 "policy_order": tuple(policy_order),
                 "case_chiplet_ids": tuple(case.chiplet_ids),
                 "best_wirelength": float(best_wirelength),
+                "best_selection_score": float(best_selection_score),
                 "final_greedy_wirelength": float(rollout_wirelength),
+                "final_greedy_selection_score": float(rollout_selection_score),
                 "config": dict(config),
                 "saved_at": datetime.now().isoformat(timespec="seconds"),
             },
@@ -790,7 +1035,7 @@ def _config_grid(config: dict) -> int:
 
 
 def _placement_order(case: FloorplanCase, config: dict) -> tuple[str, ...]:
-    mode = str(config.get("placement_order", "degree_area")).lower()
+    mode = str(config.get("placement_order", "area")).lower()
     chiplets = case.chiplet_by_id
     ids = tuple(chiplet.id for chiplet in case.chiplets)
     degree = {chiplet_id: 0 for chiplet_id in ids}
@@ -801,7 +1046,7 @@ def _placement_order(case: FloorplanCase, config: dict) -> tuple[str, ...]:
 
     if mode == "input":
         return ids
-    if mode == "area":
+    if mode in {"area", "flexplanner", "flexplanner_area"}:
         return tuple(sorted(ids, key=lambda chiplet_id: (-chiplets[chiplet_id].width * chiplets[chiplet_id].height, chiplet_id)))
     if mode == "degree":
         return tuple(sorted(ids, key=lambda chiplet_id: (-degree[chiplet_id], chiplet_id)))
@@ -825,14 +1070,20 @@ def _make_env(
     wire_mask_scale: float,
     reward_scale: float,
     invalid_placement_penalty: float,
-) -> _EfficientPlaceEnv:
-    return _EfficientPlaceEnv(
+    overlap_reward_coef: float,
+    along_boundary: bool,
+    overlap_ratio: float,
+) -> _FlexPlannerEnv:
+    return _FlexPlannerEnv(
         case=case,
         order=order,
         grid=grid,
         wire_mask_scale=wire_mask_scale,
         reward_scale=reward_scale,
         invalid_placement_penalty=invalid_placement_penalty,
+        overlap_reward_coef=overlap_reward_coef,
+        along_boundary=along_boundary,
+        overlap_ratio=overlap_ratio,
     )
 
 
@@ -861,7 +1112,7 @@ def _masked_distribution(
 
 
 def _ppo_update(
-    model: _EfficientPlaceActorCritic,
+    model: _FlexPlannerActorCritic,
     optimizer: torch.optim.Optimizer,
     buffer: _RolloutBuffer,
     device: torch.device,
@@ -944,7 +1195,7 @@ def _ppo_update(
 
 
 def _imitation_update(
-    model: _EfficientPlaceActorCritic,
+    model: _FlexPlannerActorCritic,
     optimizer: torch.optim.Optimizer,
     buffer: _RolloutBuffer | None,
     device: torch.device,
@@ -1013,7 +1264,7 @@ def _imitation_update(
 
 
 def _reinforce_elite_until_greedy_match(
-    model: _EfficientPlaceActorCritic,
+    model: _FlexPlannerActorCritic,
     optimizer: torch.optim.Optimizer,
     buffer: _RolloutBuffer | None,
     device: torch.device,
@@ -1068,7 +1319,7 @@ def _reinforce_elite_until_greedy_match(
 
 
 def _greedy_matches_buffer(
-    model: _EfficientPlaceActorCritic,
+    model: _FlexPlannerActorCritic,
     buffer: _RolloutBuffer,
     device: torch.device,
     grid: int,
@@ -1123,11 +1374,14 @@ def _greedy_rollout(
     objective: Callable[[Layout], CostResult],
     order: tuple[str, ...],
     grid: int,
-    model: _EfficientPlaceActorCritic,
+    model: _FlexPlannerActorCritic,
     device: torch.device,
     wire_mask_scale: float,
     reward_scale: float,
     invalid_placement_penalty: float,
+    overlap_reward_coef: float,
+    along_boundary: bool,
+    overlap_ratio: float,
     wire_mask_bias: float,
     greedy_wire_mask: bool,
 ) -> tuple[Layout, CostResult, float, bool, int]:
@@ -1138,6 +1392,9 @@ def _greedy_rollout(
         wire_mask_scale=wire_mask_scale,
         reward_scale=reward_scale,
         invalid_placement_penalty=invalid_placement_penalty,
+        overlap_reward_coef=overlap_reward_coef,
+        along_boundary=along_boundary,
+        overlap_ratio=overlap_ratio,
     )
     state_np = env.reset()
     model.eval()
@@ -1165,5 +1422,30 @@ def _wirelength(case: FloorplanCase, layout: Layout) -> float:
     return float(hpwl(case, layout))
 
 
+def _layout_penalties(case: FloorplanCase, layout: Layout) -> tuple[float, float]:
+    return float(total_overlap_penalty(case, layout)), float(total_outline_penalty(case, layout))
+
+
 def _is_legal(case: FloorplanCase, layout: Layout) -> bool:
     return total_overlap_penalty(case, layout) <= 1e-9 and total_outline_penalty(case, layout) <= 1e-9
+
+
+def _is_selectable(
+    overlap_penalty: float,
+    outline_penalty: float,
+    max_overlap_penalty: float,
+    max_outline_penalty: float,
+) -> bool:
+    return overlap_penalty <= max_overlap_penalty and outline_penalty <= max_outline_penalty
+
+
+def _selection_score(
+    wirelength: float,
+    overlap_penalty: float,
+    outline_penalty: float,
+    reference_wirelength: float,
+    overlap_coef: float,
+    outline_coef: float,
+) -> float:
+    wl_norm = wirelength / max(reference_wirelength, 1e-9)
+    return float(wl_norm + overlap_coef * overlap_penalty + outline_coef * outline_penalty)

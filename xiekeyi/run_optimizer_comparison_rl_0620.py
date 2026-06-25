@@ -5,6 +5,7 @@ import csv
 import json
 import shutil
 import time
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -16,8 +17,33 @@ from thermopt.layout.visualization import save_cost_curve, save_final_summary, s
 from thermopt.objective.cost import Objective
 from thermopt.objective.metrics import collect_metrics
 from thermopt.optimizer import atplace, atmplace, genetic_algorithm, milp_wl, sequence_pair, simulated_annealing
-from xiekeyi import rl_test_0623_allreward
+from xiekeyi import rl_test_0623_EffPlace, rl_test_0623_allreward, rl_test_0623_flexplanner
 from thermopt.thermal.backend import build_thermal_backend
+
+
+_RL_OPTIMIZERS = {
+    "allreward": rl_test_0623_allreward.optimize,
+    "effplace": rl_test_0623_EffPlace.optimize,
+    "flexplanner": rl_test_0623_flexplanner.optimize,
+}
+
+
+def _resolve_rl_optimizer(config: dict) -> tuple[str, Callable]:
+    if "variant" not in config:
+        raise ValueError("reinforcement_learning.variant must be one of: allreward, effplace, flexplanner")
+    variant = str(config["variant"]).strip().lower()
+    aliases = {
+        "all_reward": "allreward",
+        "efficientplace": "effplace",
+        "efficient_place": "effplace",
+        "flex": "flexplanner",
+    }
+    variant = aliases.get(variant, variant)
+    try:
+        return variant, _RL_OPTIMIZERS[variant]
+    except KeyError as exc:
+        choices = ", ".join(sorted(_RL_OPTIMIZERS))
+        raise ValueError(f"Unknown reinforcement_learning.variant={variant!r}; expected one of: {choices}") from exc
 
 
 def load_config(path: Path) -> dict:
@@ -48,8 +74,10 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
         runs.append(("simulated_annealing", simulated_annealing.optimize, config["simulated_annealing"], seed + 100))
     if "genetic_algorithm" in config:
         runs.append(("genetic_algorithm", genetic_algorithm.optimize, config["genetic_algorithm"], seed + 200))
+    rl_variant = None
     if "reinforcement_learning" in config:
-        runs.append(("reinforcement_learning", rl_test_0623_allreward.optimize, config["reinforcement_learning"], seed + 300))
+        rl_variant, rl_optimizer = _resolve_rl_optimizer(config["reinforcement_learning"])
+        runs.append(("reinforcement_learning", rl_optimizer, config["reinforcement_learning"], seed + 300))
     if "sequence_pair" in config:
         runs.append(("sequence_pair", sequence_pair.optimize, config["sequence_pair"], seed + 400))
     if "milp_wl" in config:
@@ -111,6 +139,8 @@ def run_single_case(config: dict, config_path: Path, case_input: CaseInput, outp
             row["training_episodes"] = result.training_episodes
             row["rollout_steps"] = result.rollout_steps
             row["mean_episode_return"] = float(sum(result.episode_returns) / max(1, len(result.episode_returns)))
+            if name == "reinforcement_learning":
+                row["rl_variant"] = rl_variant
         if hasattr(result, "solver_success"):
             row["solver_success"] = result.solver_success
             row["solver_message"] = result.solver_message
