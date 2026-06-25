@@ -6,17 +6,13 @@ case:
   source: atplace
   data_dir: external/ATPlace_pub/cases
   cases:
-    - Case4
-    - Case5
+    - Case7
   unit_scale: 0.001
   initial_layout: random
 
 thermal:
-  backend: hotspot
-  hotspot_binary: external/ATPlace_pub/thermal/hotspot
-  hotspot_required: true
-  hotspot_allow_fallback: false
-  grid_size: [64, 64]
+  backend: heuristic
+  grid_size: [100, 100]
   ambient: 25.0
   scale: 0.05
   sigma_factor: 1.0
@@ -62,8 +58,9 @@ atmplace:
 
 
 reinforcement_learning:
+  variant: allreward
   placement_order: degree_area
-  grid: 128
+  grid: 64
   episodes: 500
   hidden_dim: 64
   learning_rate: 0.0001
@@ -75,15 +72,16 @@ reinforcement_learning:
   entropy_coef: 0.0
   critic_coef: 0.5
   max_grad_norm: 0.5
-  wire_mask_scale: 1000.0
-  reward_scale: 1000.0
+  wire_mask_scale: 80.0
+  reward_scale: 80.0
   invalid_placement_penalty: 1.0
   wire_mask_bias: 2.0
-  greedy_wire_mask: false
+  greedy_wire_mask: true
   shuffle_placement_order: false
+  fixed_first_macros: 0
   verbose: true
 
-  terminal_reward_coef: 100.0
+  terminal_reward_coef: 70.0
   elite_replay_coef: 0.3
   elite_replay_epochs: 4
   elite_replay_final_epochs: 50

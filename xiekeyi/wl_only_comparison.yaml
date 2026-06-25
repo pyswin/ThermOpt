@@ -61,9 +61,10 @@ atmplace:
 
 
 reinforcement_learning:
+  variant: allreward
   placement_order: degree_area
   grid: 64
-  episodes: 500
+  episodes: 100
   hidden_dim: 64
   learning_rate: 0.0002
   gamma: 0.97
@@ -77,9 +78,11 @@ reinforcement_learning:
   wire_mask_scale: 80.0
   reward_scale: 80.0
   invalid_placement_penalty: 1.0
+  illegal_terminal_penalty: 28.0
   wire_mask_bias: 1.0
   greedy_wire_mask: true
   shuffle_placement_order: false
+  fixed_first_macros: 0
   verbose: true
   terminal_reward_coef: 10.0
   elite_replay_coef: 0.1

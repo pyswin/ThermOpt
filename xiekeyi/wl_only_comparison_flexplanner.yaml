@@ -1,6 +1,6 @@
 seed: 17
 output_root: outputs
-experiment_name: benchmark_wl_only_at_atm_rleff_case7
+experiment_name: benchmark_wl_only_at_atm_flexplanner_case7
 
 case:
   source: atplace
@@ -58,41 +58,42 @@ atmplace:
 
 
 reinforcement_learning:
-  variant: effplace
+  variant: flexplanner
   placement_order: degree_area
   grid: 64
-  episodes: 500
-
+  episodes: 1000
   hidden_dim: 64
   learning_rate: 0.0001
   gamma: 0.99
   gae_lambda: 0.95
-  ppo_epochs: 8
-  batch_size: 64
-  clip_epsilon: 0.15
-  entropy_coef: 0.005
+  ppo_epochs: 10
+  batch_size: 128
+  clip_epsilon: 0.20
+  entropy_coef: 0.02
   critic_coef: 0.5
-  max_grad_norm: 2.0
-
-  wire_mask_scale: 80.0
-  reward_scale: 256.0
-  wire_mask_bias: 1.0
-  greedy_wire_mask: false
-
+  max_grad_norm: 5.0
+  wire_mask_scale: 1.0
+  reward_scale: 512.0
   invalid_placement_penalty: 1.0
-  terminal_reward_coef: 50.0
-
-  tree_search_enabled: true
-  frontier_capacity: 16
-  frontier_capacity: 8
-  tree_exploration_weight: 55.0
-
+  reward_weight_overlap: 0.5
+  wire_mask_bias: 0.5
+  greedy_wire_mask: false
+  along_boundary: true
+  overlap_ratio: 0.05
   shuffle_placement_order: false
   fixed_first_macros: 0
   verbose: true
 
-  elite_replay_coef: 0.05
+  terminal_reward_coef: 50.0
+  terminal_overlap_penalty_coef: 40.0
+  terminal_outline_penalty_coef: 80.0
+  selection_overlap_penalty_coef: 40.0
+  selection_outline_penalty_coef: 80.0
+  max_selection_overlap_penalty: 0.01
+  max_selection_outline_penalty: 0.0
+  elite_replay_coef: 0.2
   elite_replay_epochs: 1
-  elite_replay_final_epochs: 30
-  elite_replay_match_epochs: 150
-  elite_replay_match_coef: 1.0
+  elite_replay_final_epochs: 20
+  elite_replay_match_epochs: 100
+  elite_replay_match_coef: 2.0
+  elite_replay_margin: 1.0
