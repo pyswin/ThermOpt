@@ -1,0 +1,60 @@
+seed: 17
+output_root: outputs
+experiment_name: rl_from_greedy_8_10
+
+case:
+  source: atplace
+  data_dir: external/ATPlace_pub/cases
+  cases:
+    - Case8
+    - Case9
+    - Case10
+  unit_scale: 0.001
+  initial_layout: random
+
+thermal:
+  backend: heuristic
+  grid_size: [64, 64]
+  ambient: 25.0
+  scale: 0.05
+  sigma_factor: 1.0
+
+objective:
+  alpha: 1.0
+  beta: 0.0
+  gamma: 50.0
+  delta: 80.0
+  thermal_mode: topk
+  topk_percent: 0.05
+  temperature_limit: 85.0
+
+# Greedy connectivity-based layout: no solver, no gradient.
+# Phase 1: detect mutual best-partner pairs (e.g. GPU↔HBM, CPU↔Analog).
+# Phase 2: strip-pack pairs as units, then remaining singles.
+# Phase 3: SA refinement for sa_steps steps to tighten before RL.
+baseline_optimizer: greedy_connectivity
+
+greedy_connectivity:
+  sa_steps: 3000
+
+rl_local_search:
+  num_candidates: 20
+  total_steps: 1200
+  epsilon_start: 0.1
+  epsilon_end: 0.02
+  hidden_dim: 64
+  learning_rate: 0.001
+  gamma: 0.99
+  buffer_capacity: 8000
+  batch_size: 32
+  train_after: 40
+  target_update_freq: 10
+  tau: 0.01
+  per_alpha: 0.6
+  per_beta_start: 0.4
+  per_beta_end: 1.0
+  reject_penalty: -0.01
+  suboptimal_accept_penalty: -0.01
+  move_scale: 0.5
+  restart_interval: 150
+  report_every: 100
