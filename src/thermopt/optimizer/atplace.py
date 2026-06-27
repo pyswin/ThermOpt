@@ -256,18 +256,71 @@ def _analytical_refine(case: FloorplanCase, layout: Layout, config: dict, seed: 
     overlap_weight = float(config.get("density_weight", 5000.0))
     outline_weight = float(config.get("outline_weight", 20000.0))
     wl_weight = float(config.get("wl_weight", 1.0))
+    thermal_weight = float(config.get("thermal_weight", 0.0))
 
     widths_t = torch.tensor(widths, dtype=torch.float64)
     heights_t = torch.tensor(heights, dtype=torch.float64)
     net_tensors = _net_tensors(case, ids, rotations)
 
+    # --- Thermal setup (load model once before loop) ---
+    thermal_state = None
+    grid_x_t = grid_y_t = powers_t = None
+    thermal_sharpness = 0.0
+    if thermal_weight > 0.0:
+        from thermopt.thermal.grad_thermal import load_scot_for_grad
+        from thermopt.thermal.surrogate_input import coordinate_grid, SURROGATE_NATIVE_GRID_SIZE
+
+        model_dir = config.get(
+            "thermfm_model_dir",
+            str(
+                (
+                    __import__("pathlib").Path(__file__).parent.parent
+                    / "thermal"
+                    / "thermfm_t_case_all_demo"
+                    / "model"
+                ).resolve()
+            ),
+        )
+        thermal_state = load_scot_for_grad(model_dir)
+
+        grid_x_np, grid_y_np = coordinate_grid(case, SURROGATE_NATIVE_GRID_SIZE)
+        grid_x_t = torch.tensor(grid_x_np, dtype=torch.float32)
+        grid_y_t = torch.tensor(grid_y_np, dtype=torch.float32)
+        powers_np = np.array(
+            [case.chiplet_by_id[cid].power for cid in ids], dtype=np.float32
+        )
+        powers_t = torch.tensor(powers_np, dtype=torch.float32)
+        # sharpness: transition zone ≈ 8 pixels wide so float32 doesn't saturate
+        pixel_size = min(case.outline_width, case.outline_height) / SURROGATE_NATIVE_GRID_SIZE[0]
+        thermal_sharpness = float(config.get("thermal_sharpness", 0.5 / pixel_size))
+        thermal_mode = str(config.get("thermal_mode", "tmax"))
+        thermal_topk = int(config.get("thermal_topk", 50))
+
+    # WL budget: soft penalty when WL exceeds initial * wl_budget_factor
+    wl_budget_factor = float(config.get("wl_budget_factor", 0.0))
+    wl_budget_weight = float(config.get("wl_budget_weight", 1e5))
+    with torch.no_grad():
+        wl_budget = _smooth_hpwl_torch(xy, net_tensors).item() * wl_budget_factor if wl_budget_factor > 0 else None
+
     best_layout = layout
     best_score = _legal_hpwl_score(case, layout)
     for _ in range(steps):
         optimizer.zero_grad()
-        loss = wl_weight * _smooth_hpwl_torch(xy, net_tensors)
+        wl_loss = _smooth_hpwl_torch(xy, net_tensors)
+        loss = wl_weight * wl_loss
+        if wl_budget is not None:
+            loss = loss + wl_budget_weight * torch.relu(wl_loss - wl_budget).square()
         loss = loss + outline_weight * _outline_torch(xy, widths_t, heights_t, case.outline_width, case.outline_height)
         loss = loss + overlap_weight * _overlap_torch(xy, widths_t, heights_t)
+        if thermal_state is not None:
+            from thermopt.thermal.grad_thermal import scot_thermal_loss
+            t_loss = scot_thermal_loss(
+                xy, widths_t.float(), heights_t.float(),
+                powers_t, grid_x_t, grid_y_t,
+                thermal_state, thermal_sharpness,
+                mode=thermal_mode, topk=thermal_topk,
+            )
+            loss = loss + thermal_weight * t_loss.double().cpu()
         loss.backward()
         optimizer.step()
 

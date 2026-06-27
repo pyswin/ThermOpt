@@ -12,5 +12,6 @@
   "thermal_helper_imported": false,
   "visible_training_step": false,
   "layout_json": "/data/xinli/ThermOpt/external/ATPlace_pub/results/Case4_wl_20260627_110243/layout.json",
-  "layout_chiplets": 11
+  "layout_chiplets": 11,
+  "thermopt_wl_m": 67.109199
 }
