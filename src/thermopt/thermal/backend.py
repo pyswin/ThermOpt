@@ -46,6 +46,16 @@ def build_thermal_backend(case: FloorplanCase, thermal_config: dict, work_dir=No
         return HotSpotBackend(case=case, config=thermal_config, work_dir=work_dir)
     if backend_name == "heuristic":
         return HeuristicThermalBackend(config=thermal_config)
+    if backend_name in {"thermfm", "thermfm_t"}:
+        from thermopt.thermal.thermfm import ThermFMThermalBackend
+
+        return ThermFMThermalBackend(case=case, config=thermal_config, work_dir=work_dir, name=backend_name)
+    if backend_name in {"ufno", "ufno_demo"}:
+        from thermopt.thermal.ufno import UFNOThermalBackend
+
+        return UFNOThermalBackend(case=case, config=thermal_config, work_dir=work_dir, name="ufno")
     if backend_name == "ai":
         return AIThermalBackend(config=thermal_config)
-    raise ValueError(f"unknown thermal backend: {backend_name}. Expected 'hotspot', 'heuristic', or 'ai'.")
+    raise ValueError(
+        f"unknown thermal backend: {backend_name}. Expected 'hotspot', 'heuristic', 'thermfm_t', 'ufno', or 'ai'."
+    )
