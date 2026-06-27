@@ -131,12 +131,18 @@ def main():
     out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load params
+    # Load params: prefer reproduce.json's "wl" section (matches paper settings)
     params = Params.Params(SRC / "params.json")
-    with open(param_file) as f:
-        data = json.load(f)
+    reproduce_file = Path(args.case_dir) / "reproduce.json"
+    if reproduce_file.exists():
+        with open(reproduce_file) as f:
+            repro = json.load(f)
+        data = repro.get("wl", repro)  # use "wl" sub-dict if present
+    else:
+        with open(param_file) as f:
+            data = json.load(f)
     params.fromJson(data)
-    # Normalize stages
+    # Normalize stages (ensure "iteration" key is set)
     default_stage = (Params.Params(SRC / "params.json").floorplan_stages or [{}])[0]
     stages = data.get("floorplan_stages") or params.floorplan_stages or [default_stage]
     merged = []
@@ -150,9 +156,10 @@ def main():
     params.fence_height = getattr(params, "fence_height", 0.0)
     params.result_dir = str(out_dir)
     params.thermal_dir = str(ROOT / "thermal") + os.sep
-    # Force pulp solver
-    params.ILPsolver = "pulp"
+    # Use Gurobi (academic license)
+    params.ILPsolver = "grb"
     params.thermal_solver = getattr(params, "thermal_solver", "hotspot")
+    params.random_seed = 42
 
     print(f"ILPsolver={params.ILPsolver}, temp_aware_opt={getattr(params,'temp_aware_opt',False)}")
     system = build_system(case_dir, args.case, params)
@@ -164,8 +171,10 @@ def main():
     print(f"Placement done in {elapsed:.1f}s")
     print(f"Result: {result}")
 
-    # Try to extract HPWL
-    if isinstance(result, (list, tuple)):
+    # Extract HPWL from result (dict, list/tuple, or attr)
+    if isinstance(result, dict):
+        hpwl = result['hpwl']
+    elif isinstance(result, (list, tuple)):
         hpwl = result[0]
     elif hasattr(result, 'hpwl'):
         hpwl = result.hpwl
@@ -177,9 +186,30 @@ def main():
         "twl_m": float(hpwl) / 1e6,
         "runtime_s": elapsed,
     }
+    # Save chip positions and sizes for FNO training
+    if isinstance(result, dict) and "best_fp_pos" in result:
+        import numpy as np
+        pos_data = result["best_fp_pos"]
+        size_x = result.get("best_fp_size", [None, None])[0]
+        size_y = result.get("best_fp_size", [None, None])[1]
+        # pos_data is list of lists of tensors [[x_tensor, rot_tensor]]
+        if pos_data and len(pos_data[0]) >= 1:
+            x_pos = pos_data[0][0]
+            if hasattr(x_pos, 'detach'):
+                x_pos = x_pos.detach().cpu().numpy()
+            else:
+                x_pos = np.array(x_pos)
+            n = len(x_pos) // 2
+            placement = {
+                "x": x_pos[:n].tolist(),
+                "y": x_pos[n:].tolist(),
+                "w": size_x.tolist() if hasattr(size_x, 'tolist') else list(size_x),
+                "h": size_y.tolist() if hasattr(size_y, 'tolist') else list(size_y),
+            }
+            summary["placement"] = placement
     with open(out_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
-    print(json.dumps(summary, indent=2))
+    print(json.dumps({k: v for k, v in summary.items() if k != "placement"}, indent=2))
 
 
 if __name__ == "__main__":
