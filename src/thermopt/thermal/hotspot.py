@@ -294,16 +294,49 @@ def _fill_space(
     ws_tail: str = "",
 ) -> list[_FlpItem]:
     eps = 1e-5
-    ws: list[_FlpItem] = []
-    ws_n = 0
 
-    def _covers(item: _FlpItem, x0: float, x1: float, y0: float, y1: float) -> bool:
+    def _contains(item: _FlpItem, x0: float, x1: float, y0: float, y1: float) -> bool:
         return (
             x0 >= item.x - eps
             and y0 >= item.y - eps
             and x1 <= item.x + item.width + eps
             and y1 <= item.y + item.height + eps
         )
+
+    def _merge_rectangles(rectangles: list[tuple[float, float, float, float]]) -> list[tuple[float, float, float, float]]:
+        merged = rectangles[:]
+        changed = True
+        while changed:
+            changed = False
+            next_round: list[tuple[float, float, float, float]] = []
+            used = [False] * len(merged)
+            for i, rect_a in enumerate(merged):
+                if used[i]:
+                    continue
+                ax0, ay0, ax1, ay1 = rect_a
+                merged_this_round = False
+                for j in range(i + 1, len(merged)):
+                    if used[j]:
+                        continue
+                    bx0, by0, bx1, by1 = merged[j]
+                    same_y = abs(ay0 - by0) <= eps and abs(ay1 - by1) <= eps
+                    same_x = abs(ax0 - bx0) <= eps and abs(ax1 - bx1) <= eps
+                    if same_y and abs(ax1 - bx0) <= eps:
+                        next_round.append((min(ax0, bx0), ay0, max(ax1, bx1), ay1))
+                        used[i] = used[j] = True
+                        merged_this_round = True
+                        changed = True
+                        break
+                    if same_x and abs(ay1 - by0) <= eps:
+                        next_round.append((ax0, min(ay0, by0), ax1, max(ay1, by1)))
+                        used[i] = used[j] = True
+                        merged_this_round = True
+                        changed = True
+                        break
+                if not merged_this_round and not used[i]:
+                    next_round.append(rect_a)
+            merged = next_round
+        return merged
 
     xs = {float(width_st), float(width_ed)}
     ys = {float(height_st), float(height_ed)}
@@ -315,18 +348,19 @@ def _fill_space(
     x_edges = sorted(xs)
     y_edges = sorted(ys)
 
+    raw_ws: list[tuple[float, float, float, float]] = []
     for x0, x1 in zip(x_edges, x_edges[1:]):
         if x1 - x0 < eps:
             continue
         for y0, y1 in zip(y_edges, y_edges[1:]):
             if y1 - y0 < eps:
                 continue
-            if any(_covers(item, x0, x1, y0, y1) for item in occupied):
+            if any(_contains(item, x0, x1, y0, y1) for item in occupied):
                 continue
-            ws.append(_FlpItem(f"WS_{ws_n}", x1 - x0, y1 - y0, x0, y0, ws_tail))
-            ws_n += 1
+            raw_ws.append((x0, y0, x1, y1))
 
-    return ws
+    merged_ws = _merge_rectangles(raw_ws)
+    return [_FlpItem(f"WS_{idx}", x1 - x0, y1 - y0, x0, y0, ws_tail) for idx, (x0, y0, x1, y1) in enumerate(merged_ws)]
 
 
 def _merge_adjacent_space(items: list[_FlpItem]) -> list[_FlpItem]:
