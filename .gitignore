@@ -22,3 +22,4 @@ build/
 *.egg-info/
 third_party/
 .vscode/
+src/thermopt/input_sample.npy
