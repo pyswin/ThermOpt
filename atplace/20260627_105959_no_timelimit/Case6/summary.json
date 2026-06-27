@@ -1,0 +1,16 @@
+{
+  "case": "Case6",
+  "mode": "wl",
+  "case_dir": "/data/xinli/ThermOpt/external/ATPlace_pub/cases/Case6",
+  "param_file": "/data/xinli/.claude/jobs/0c3576e9/tmp/param_tmp/Case6_wl.json",
+  "out_dir": "/data/xinli/ThermOpt/external/ATPlace_pub/results/Case6_wl_20260627_111954",
+  "hpwl": 32031174.0,
+  "twl_m": 32.031174,
+  "runtime_s": 809.4199347496033,
+  "has_best_fp": true,
+  "thermal_model": "public_analytic_wrapper",
+  "thermal_helper_imported": false,
+  "visible_training_step": false,
+  "layout_json": "/data/xinli/ThermOpt/external/ATPlace_pub/results/Case6_wl_20260627_111954/layout.json",
+  "layout_chiplets": 20
+}

@@ -1,0 +1,16 @@
+{
+  "case": "Case10",
+  "mode": "wl",
+  "case_dir": "/data/xinli/ThermOpt/external/ATPlace_pub/cases/Case10",
+  "param_file": "/data/xinli/ThermOpt/external/ATPlace_pub/.param_tmp/Case10_wl.json",
+  "out_dir": "/data/xinli/ThermOpt/atplace/20260627_163106_milp150s/Case10",
+  "hpwl": 31369840.0,
+  "twl_m": 31.36984,
+  "runtime_s": 756.9944791793823,
+  "has_best_fp": true,
+  "thermal_model": "disabled",
+  "thermal_helper_imported": false,
+  "visible_training_step": false,
+  "layout_json": "/data/xinli/ThermOpt/atplace/20260627_163106_milp150s/Case10/layout.json",
+  "layout_chiplets": 61
+}
