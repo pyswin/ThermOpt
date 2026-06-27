@@ -74,7 +74,39 @@ bash scripts/run_atmplace.sh
 
 This uses `configs/atmplace_benchmark.yaml`.
 
-6. Generate a thermal dataset:
+6. Run the Therm-FM-backed `atplace` benchmark:
+
+```bash
+bash scripts/run_atplace_thermfm.sh
+```
+
+This uses `configs/atplace_thermfm_benchmark.yaml`.
+
+7. Run the Therm-FM-backed `atmplace` benchmark:
+
+```bash
+bash scripts/run_atmplace_thermfm.sh
+```
+
+This uses `configs/atmplace_thermfm_benchmark.yaml`.
+
+8. Run the U-FNO-backed `atplace` benchmark:
+
+```bash
+bash scripts/run_atplace_ufno.sh
+```
+
+This uses `configs/atplace_ufno_benchmark.yaml`.
+
+9. Run the U-FNO-backed `atmplace` benchmark:
+
+```bash
+bash scripts/run_atmplace_ufno.sh
+```
+
+This uses `configs/atmplace_ufno_benchmark.yaml`.
+
+10. Generate a thermal dataset:
 
 ```bash
 python3 scripts/generate_thermal_dataset.py \
@@ -90,6 +122,10 @@ The detailed dataset-generation commands and option meanings are listed below.
 - `configs/atplace_v0.yaml`: SA on ATPlace cases.
 - `configs/atplace_benchmark.yaml`: standalone `atplace` benchmark.
 - `configs/atmplace_benchmark.yaml`: standalone `atmplace` benchmark.
+- `configs/atplace_thermfm_benchmark.yaml`: `atplace` benchmark with Therm-FM thermal backend.
+- `configs/atmplace_thermfm_benchmark.yaml`: `atmplace` benchmark with Therm-FM thermal backend.
+- `configs/atplace_ufno_benchmark.yaml`: `atplace` benchmark with U-FNO thermal backend.
+- `configs/atmplace_ufno_benchmark.yaml`: `atmplace` benchmark with U-FNO thermal backend.
 - `configs/wl_benchmark.yaml`: ATPlace-family benchmark for `atplace` and `atmplace`.
 - `configs/optimizer_comparison.yaml`: older broad comparison config, kept for reference.
 
@@ -99,7 +135,7 @@ The thermal backend is controlled by the `thermal` section in a config file:
 
 ```yaml
 thermal:
-  backend: hotspot   # hotspot, heuristic, or ai
+  backend: hotspot   # hotspot, heuristic, thermfm, ufno, or ai
   hotspot_binary: external/ATPlace_pub/thermal/hotspot
   hotspot_required: true
   hotspot_allow_fallback: false
@@ -108,8 +144,13 @@ thermal:
 - `backend: hotspot` is supported only on Linux and uses the vendored Linux x86-64 binary at `external/ATPlace_pub/thermal/hotspot` by default.
 - macOS must not be used to generate HotSpot labels. Use `backend: heuristic` on macOS for local smoke tests until the AI backend replaces it, or run HotSpot generation on Linux.
 - `backend: heuristic` is a deterministic analytic approximation based on chiplet power and distance. It is useful for local development, but it is not a HotSpot label source.
+- `backend: thermfm` uses the vendored Therm-FM demo under `src/thermopt/thermal/thermfm_t_case_all_demo/`. It is an optimizer-side temperature predictor, not a dataset label source.
+- `backend: ufno` uses the vendored U-FNO demo under `src/thermopt/thermal/ufno_demo/`. It is also optimizer-side only.
 - `backend: hotspot` is the default for thermal runs. If HotSpot is missing or fails, the run raises an error.
 - `backend: ai` is a reserved interface for a future AI thermal simulator. It currently raises `NotImplementedError`.
+- Therm-FM expects the native `64x64` physical grid used by the demo. The backend keeps one model instance alive for the whole optimization run, reuses the fixed coordinate channels, updates only the power channel when the layout changes, normalizes the `3x64x64` input tensor with the demo constants, and converts the model output back to Celsius before returning it to the optimizer.
+- The optimizer-side Therm-FM input is built from the same pointwise semantics as the dataset CSVs, but it is constructed in memory. It does not write CSV files and does not spawn a subprocess per evaluation.
+- U-FNO follows the same rule: it builds the same pointwise-semantics input in memory, keeps the model bundle loaded once, and returns Celsius temperature maps to the optimizer.
 - `thermal.grid_size` is the target output resolution. HotSpot grid inputs are rounded up per axis to the next power of two, then resampled back to the requested size.
 - HotSpot grid output can contain multiple `Layer N:` sections. The parser reads the chip layer (`Layer 4`) when present.
 
@@ -227,6 +268,7 @@ python3 scripts/generate_thermal_dataset.py \
 - If you want a dataset for temperature-field training, keep `pointwise` and `json` in `--save_formats`.
 - If you only care about the raster temperature map, `gridwise` is the smallest output.
 - `background` cells in `pointwise` are intentional. They represent grid locations outside any chiplet footprint.
+- Dataset generation always uses HotSpot as the golden thermal backend. Therm-FM and U-FNO are only available on the optimizer path.
 - `grid_size` in the dataset command is the requested output resolution, not the internal HotSpot grid. HotSpot may round its internal grid up and then resample back.
 
 ## Objective

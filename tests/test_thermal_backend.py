@@ -7,6 +7,8 @@ from thermopt.layout.objects import Chiplet, FloorplanCase, Layout, Placement
 from thermopt.optimizer.simulated_annealing import available_moves
 from thermopt.thermal.backend import build_thermal_backend
 import thermopt.thermal.hotspot as hotspot_module
+from thermopt.thermal.thermfm import ThermFMThermalBackend
+from thermopt.thermal.ufno import UFNOThermalBackend
 from thermopt.thermal.hotspot import _parse_grid_steady, _render_hotspot_config, _write_hotspot_floorplans
 
 
@@ -292,3 +294,141 @@ def test_hotspot_config_rounds_grid_to_powers_of_two(tmp_path: Path) -> None:
     grid_cols_line = next(line for line in config_text.splitlines() if "-grid_cols" in line)
     assert grid_rows_line.strip().endswith("16")
     assert grid_cols_line.strip().endswith("16")
+
+
+def test_thermfm_backend_rasterizes_inputs_and_returns_celsius(tmp_path: Path) -> None:
+    case = FloorplanCase(
+        chiplets=(
+            Chiplet("A", 3.0, 2.0, 10.0),
+            Chiplet("B", 2.0, 4.0, 20.0),
+        ),
+        nets=(),
+        outline_width=10.0,
+        outline_height=6.0,
+    )
+    layout = Layout(
+        (
+            Placement("A", 0.0, 0.0),
+            Placement("B", 4.0, 0.0, 90),
+        )
+    )
+
+    captured: dict[str, np.ndarray] = {}
+
+    def fake_predictor(input_phys: np.ndarray) -> np.ndarray:
+        captured["input"] = np.array(input_phys, copy=True)
+        return np.full((1, 64, 64), 300.0, dtype=np.float32)
+
+    backend = ThermFMThermalBackend(
+        case=case,
+        config={"backend": "thermfm", "grid_size": [32, 16]},
+        work_dir=tmp_path,
+        predictor=fake_predictor,
+    )
+
+    temperature = backend.simulate(case, layout)
+
+    assert temperature.shape == (16, 32)
+    assert float(np.min(temperature)) == pytest.approx(26.85, abs=1e-3)
+    assert float(np.max(temperature)) == pytest.approx(26.85, abs=1e-3)
+
+    input_phys = captured["input"]
+    assert input_phys.shape == (3, 64, 64)
+
+    xs = np.linspace(0.0, case.outline_width, 64, dtype=np.float32)
+    ys = np.linspace(0.0, case.outline_height, 64, dtype=np.float32)
+    grid_x, grid_y = np.meshgrid(xs, ys, indexing="ij")
+
+    np.testing.assert_allclose(input_phys[1], grid_x)
+    np.testing.assert_allclose(input_phys[2], grid_y)
+
+    mask_a = (grid_x >= 0.0) & (grid_x <= 3.0) & (grid_y >= 0.0) & (grid_y <= 2.0)
+    mask_b = (grid_x >= 4.0) & (grid_x <= 8.0) & (grid_y >= 0.0) & (grid_y <= 2.0)
+    np.testing.assert_allclose(np.unique(input_phys[0][mask_a]), [10.0])
+    np.testing.assert_allclose(np.unique(input_phys[0][mask_b]), [20.0])
+    assert np.all(input_phys[0][~(mask_a | mask_b)] == 0.0)
+
+
+def test_ufno_backend_rasterizes_inputs_and_returns_celsius(tmp_path: Path) -> None:
+    case = FloorplanCase(
+        chiplets=(
+            Chiplet("A", 3.0, 2.0, 10.0),
+            Chiplet("B", 2.0, 4.0, 20.0),
+        ),
+        nets=(),
+        outline_width=10.0,
+        outline_height=6.0,
+    )
+    layout = Layout(
+        (
+            Placement("A", 0.0, 0.0),
+            Placement("B", 4.0, 0.0, 90),
+        )
+    )
+
+    captured: dict[str, np.ndarray] = {}
+
+    def fake_predictor(input_phys: np.ndarray) -> np.ndarray:
+        captured["input"] = np.array(input_phys, copy=True)
+        return np.full((64, 64), 300.0, dtype=np.float32)
+
+    backend = UFNOThermalBackend(
+        case=case,
+        config={"backend": "ufno", "grid_size": [32, 16]},
+        work_dir=tmp_path,
+        predictor=fake_predictor,
+    )
+
+    temperature = backend.simulate(case, layout)
+
+    assert temperature.shape == (16, 32)
+    assert float(np.min(temperature)) == pytest.approx(26.85, abs=1e-3)
+    assert float(np.max(temperature)) == pytest.approx(26.85, abs=1e-3)
+
+    input_phys = captured["input"]
+    assert input_phys.shape == (64, 64, 1, 3)
+
+    xs = np.linspace(0.0, case.outline_width, 64, dtype=np.float32)
+    ys = np.linspace(0.0, case.outline_height, 64, dtype=np.float32)
+    grid_x, grid_y = np.meshgrid(xs, ys, indexing="xy")
+
+    np.testing.assert_allclose(input_phys[:, :, 0, 1], grid_x)
+    np.testing.assert_allclose(input_phys[:, :, 0, 2], grid_y)
+
+    mask_a = (grid_x >= 0.0) & (grid_x <= 3.0) & (grid_y >= 0.0) & (grid_y <= 2.0)
+    mask_b = (grid_x >= 4.0) & (grid_x <= 8.0) & (grid_y >= 0.0) & (grid_y <= 2.0)
+    np.testing.assert_allclose(np.unique(input_phys[:, :, 0, 0][mask_a]), [10.0])
+    np.testing.assert_allclose(np.unique(input_phys[:, :, 0, 0][mask_b]), [20.0])
+    assert np.all(input_phys[:, :, 0, 0][~(mask_a | mask_b)] == 0.0)
+
+
+def test_dataset_generation_rejects_surrogate_backends(tmp_path: Path, monkeypatch) -> None:
+    from thermopt.data.thermal_dataset import ThermalDatasetGenerator
+    import thermopt.data.thermal_dataset as thermal_dataset_module
+
+    case_dir = tmp_path / "Case1"
+    case_dir.mkdir()
+    (case_dir / "Case1.blocks").write_text(
+        "\n".join(
+            [
+                "NumSoftRectangularBlocks : 0",
+                "NumHardRectilinearBlocks : 1",
+                "NumTerminals : 0",
+                "",
+                "A hardrectilinear 4 (0, 0) (0, 1000) (1000, 1000) (1000, 0)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (case_dir / "Case1.nets").write_text("NumNets : 0\nNumPins : 0\n", encoding="utf-8")
+    (case_dir / "Case1.power").write_text("A 10\n", encoding="utf-8")
+    (case_dir / "Case1.pl").write_text("A 0 0\n", encoding="utf-8")
+
+    monkeypatch.setattr(thermal_dataset_module, "build_thermal_backend", lambda *args, **kwargs: None)
+
+    with pytest.raises(ValueError, match="optimizer-only"):
+        ThermalDatasetGenerator(
+            case_dir,
+            {"backend": "ufno"},
+            use_case_config=False,
+        )

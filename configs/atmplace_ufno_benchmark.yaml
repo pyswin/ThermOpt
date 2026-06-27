@@ -1,0 +1,45 @@
+seed: 17
+output_root: outputs
+experiment_name: atmplace_ufno_benchmark
+
+case:
+  source: atplace
+  data_dir: external/ATPlace_pub/cases
+  cases:
+    - Case1
+  unit_scale: 0.001
+  initial_layout: random
+
+thermal:
+  backend: ufno
+  ufno_demo_root: src/thermopt/thermal/ufno_demo
+  ufno_model_path: src/thermopt/thermal/ufno_demo/model.pt
+  grid_size: [64, 64]
+  ambient: 25.0
+  scale: 0.05
+  sigma_factor: 1.0
+
+objective:
+  alpha: 1.0
+  beta: 1.0
+  gamma: 50.0
+  delta: 80.0
+  thermal_mode: topk
+  topk_percent: 0.05
+  temperature_limit: 85.0
+
+atmplace:
+  milp_chiplet_limit: 8
+  milp_time_limit: 60
+  mip_rel_gap: 0.001
+  cgd_steps: 300
+  learning_rate: 0.015
+  wl_weight: 1.0
+  density_weight: 9000.0
+  outline_weight: 30000.0
+  legalize_candidates: 64
+  legalize_iterations: 1000
+  initial_anneal_temp: 0.25
+  final_anneal_temp: 0.001
+  report_every: 100
+  verbose: false

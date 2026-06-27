@@ -113,6 +113,11 @@ class ThermalDatasetGenerator:
             },
             **(thermal_config or {}),
         )
+        backend_name = str(self.thermal_config.get("backend", "hotspot")).lower()
+        if backend_name in {"thermfm", "thermfm_t", "ufno", "ufno_demo"}:
+            raise ValueError(
+                "Therm-FM and U-FNO are optimizer-only. Dataset generation must use HotSpot as the golden backend."
+            )
         self.backend: ThermalBackend = build_thermal_backend(self.case, self.thermal_config, work_dir=work_dir)
 
     @staticmethod
