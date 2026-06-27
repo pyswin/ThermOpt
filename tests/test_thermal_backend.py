@@ -226,6 +226,48 @@ def test_hotspot_floorplan_expands_outline_and_uses_absolute_paths(tmp_path: Pat
     assert not any(line.startswith("Edge_") for line in chip_lines)
 
 
+def test_hotspot_empty_space_is_merged(tmp_path: Path) -> None:
+    case = FloorplanCase(
+        chiplets=(
+            Chiplet("A", 4.0, 4.0, 10.0),
+            Chiplet("B", 4.0, 4.0, 20.0),
+            Chiplet("C", 4.0, 4.0, 30.0),
+        ),
+        nets=(),
+        outline_width=20.0,
+        outline_height=20.0,
+    )
+    layout = Layout(
+        (
+            Placement("A", 0.0, 0.0),
+            Placement("B", 4.0, 0.0),
+            Placement("C", 8.0, 0.0),
+        )
+    )
+
+    workspace = tmp_path / "hotspot"
+    workspace.mkdir()
+    _write_hotspot_floorplans(
+        workspace,
+        case,
+        layout,
+        {
+            "grid_size": [8, 8],
+            "ambient": 25.0,
+            "scale": 0.1,
+            "sigma_factor": 1.0,
+        },
+    )
+
+    chip_lines = [
+        line
+        for line in (workspace / "L4_ChipLayer.flp").read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    ]
+    ws_lines = [line for line in chip_lines if line.startswith("WS_")]
+    assert len(ws_lines) < 10
+
+
 def test_hotspot_config_rounds_grid_to_powers_of_two(tmp_path: Path) -> None:
     case = FloorplanCase(
         chiplets=(Chiplet("A", 4.0, 4.0, 10.0),),

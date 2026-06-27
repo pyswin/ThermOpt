@@ -523,8 +523,11 @@ class ThermalDatasetGenerator:
             configs = [self._rotate_config(config, config.get("rotation", 0)) for config in configs]
 
         if self.randomize_position:
-            configs = self._generate_legal_layout(pos_range, self.min_gap, templates=configs)
-            configs = self._apply_position_jumps(configs, pos_range, self.min_gap)
+            try:
+                configs = self._generate_legal_layout(pos_range, self.min_gap, templates=configs)
+                configs = self._apply_position_jumps(configs, pos_range, self.min_gap)
+            except RuntimeError:
+                configs = self._generate_fallback_layout(configs, self.min_gap)
         else:
             configs = [self._clamp_config_position(config) for config in configs]
 
@@ -535,6 +538,39 @@ class ThermalDatasetGenerator:
         if not valid:
             raise RuntimeError(f"随机布局生成失败: {message}")
         return configs
+
+    def _generate_fallback_layout(self, templates: list[dict[str, Any]], min_gap: float) -> list[dict[str, Any]]:
+        ordered = sorted(
+            [config.copy() for config in templates],
+            key=lambda item: (float(item["width"]) * float(item["height"]), float(item["width"])),
+            reverse=True,
+        )
+        placements: list[dict[str, Any]] = []
+        cursor_x = 0.0
+        cursor_y = 0.0
+        row_height = 0.0
+        fallback_gap = max(min_gap, 0.0)
+
+        for config in ordered:
+            width = float(config["width"])
+            height = float(config["height"])
+            if cursor_x > 0.0 and cursor_x + width > self.case.outline_width:
+                cursor_x = 0.0
+                cursor_y += row_height + fallback_gap
+                row_height = 0.0
+            if cursor_y + height > self.case.outline_height:
+                raise RuntimeError(
+                    f"无法生成满足最小间距 {min_gap}mm 的 chiplet 布局；fallback shelf packing 仍然失败"
+                )
+            config["x"] = cursor_x
+            config["y"] = cursor_y
+            placements.append(config)
+            cursor_x += width + fallback_gap
+            row_height = max(row_height, height)
+
+        if len(placements) != len(templates):
+            raise RuntimeError("fallback shelf packing did not place all chiplets")
+        return placements
 
     def _generate_grid_variation(self, sample_id: int, total_samples: int) -> list[dict[str, Any]]:
         configs: list[dict[str, Any]] = []
