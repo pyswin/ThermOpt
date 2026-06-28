@@ -267,21 +267,25 @@ def _analytical_refine(case: FloorplanCase, layout: Layout, config: dict, seed: 
     grid_x_t = grid_y_t = powers_t = None
     thermal_sharpness = 0.0
     if thermal_weight > 0.0:
-        from thermopt.thermal.grad_thermal import load_scot_for_grad
+        from thermopt.thermal.grad_thermal import load_thermal_model_for_grad
         from thermopt.thermal.surrogate_input import coordinate_grid, SURROGATE_NATIVE_GRID_SIZE
 
-        model_dir = config.get(
-            "thermfm_model_dir",
-            str(
-                (
-                    __import__("pathlib").Path(__file__).parent.parent
-                    / "thermal"
-                    / "thermfm_t_case_all_demo"
-                    / "model"
-                ).resolve()
+        # thermal_model_path: *.pt file (UFNO/FNO) or directory (ScOT/ThermFM-L)
+        model_path = config.get(
+            "thermal_model_path",
+            config.get(
+                "thermfm_model_dir",   # backward compat
+                str(
+                    (
+                        __import__("pathlib").Path(__file__).parent.parent
+                        / "thermal"
+                        / "ufno_demo"
+                        / "model.pt"
+                    ).resolve()
+                ),
             ),
         )
-        thermal_state = load_scot_for_grad(model_dir)
+        thermal_state = load_thermal_model_for_grad(model_path)
 
         grid_x_np, grid_y_np = coordinate_grid(case, SURROGATE_NATIVE_GRID_SIZE)
         grid_x_t = torch.tensor(grid_x_np, dtype=torch.float32)
@@ -313,8 +317,8 @@ def _analytical_refine(case: FloorplanCase, layout: Layout, config: dict, seed: 
         loss = loss + outline_weight * _outline_torch(xy, widths_t, heights_t, case.outline_width, case.outline_height)
         loss = loss + overlap_weight * _overlap_torch(xy, widths_t, heights_t)
         if thermal_state is not None:
-            from thermopt.thermal.grad_thermal import scot_thermal_loss
-            t_loss = scot_thermal_loss(
+            from thermopt.thermal.grad_thermal import ufno_thermal_loss
+            t_loss = ufno_thermal_loss(
                 xy, widths_t.float(), heights_t.float(),
                 powers_t, grid_x_t, grid_y_t,
                 thermal_state, thermal_sharpness,
