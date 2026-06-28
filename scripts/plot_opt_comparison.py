@@ -57,9 +57,24 @@ def ufno_predict(case, layout) -> np.ndarray:
     return (pred_k - 273.15).astype(np.float32)
 
 
+def clamp_layout(case, layout) -> Layout:
+    """Shift each chiplet by the minimum amount to keep its bbox within the die outline."""
+    from thermopt.layout.geometry import bounds as _bounds
+    new_placements = []
+    for p in layout.placements:
+        x0, y0, x1, y1 = _bounds(case, p)
+        dx = max(0.0, -x0) - max(0.0, x1 - case.outline_width)
+        dy = max(0.0, -y0) - max(0.0, y1 - case.outline_height)
+        new_placements.append(Placement(chiplet_id=p.chiplet_id,
+                                        x=p.x + dx, y=p.y + dy,
+                                        rotation=p.rotation))
+    return Layout(placements=new_placements)
+
+
 def hotspot_predict(case, layout, cache_path=None) -> np.ndarray:
     if cache_path and cache_path.exists():
         return np.load(cache_path)["hs"]
+    layout = clamp_layout(case, layout)
     hs_backend = HotSpotBackend(case=case, config={"hotspot_binary": str(HS_BIN)})
     grid = hs_backend.simulate(case, layout)
     if cache_path:
