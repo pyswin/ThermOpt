@@ -1,0 +1,110 @@
+{
+  "case": "Case5",
+  "run": "tmax",
+  "timestamp": "20260628_132538",
+  "thermal_weight": 50000,
+  "thermal_mode": "tmax",
+  "initial": {
+    "thermopt_hpwl_m": 42.27292566963836,
+    "atplace_twl_m": 42.084768,
+    "tmax_c": 108.6290283203125,
+    "tmax50_c": 107.86932373046875
+  },
+  "final": {
+    "wl_m": 66.13459392910164,
+    "tmax_c": 92.41287231445312,
+    "tmax50_c": 91.31957244873047
+  },
+  "delta": {
+    "wl_pct": 56.44669225390619,
+    "dtmax_c": -16.216156005859375,
+    "dtmax50_c": -16.54975128173828
+  },
+  "runtime_s": 86.97286701202393,
+  "config": {
+    "refine_steps": 800,
+    "learning_rate": 0.03,
+    "density_weight": 5000.0,
+    "outline_weight": 20000.0,
+    "wl_weight": 1.0,
+    "wl_budget_weight": 0.0,
+    "wl_budget_factor": 0.0,
+    "thermal_weight": 50000.0,
+    "thermal_mode": "tmax",
+    "thermal_model_path": "/data/xinli/ThermOpt/src/thermopt/thermal/ufno_demo/model.pt"
+  },
+  "chiplets": [
+    {
+      "name": "CPU2_0",
+      "x_mm": 8.924081,
+      "y_mm": 29.123012,
+      "rotation": 270
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 9.763217,
+      "y_mm": 13.711369,
+      "rotation": 270
+    },
+    {
+      "name": "CPU2_2",
+      "x_mm": 8.105285,
+      "y_mm": 2.191053,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_3",
+      "x_mm": 29.799215,
+      "y_mm": 17.897399,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_4",
+      "x_mm": 20.214528,
+      "y_mm": 8.463231,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_5",
+      "x_mm": 21.798834,
+      "y_mm": 19.055643,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": -0.10105,
+      "y_mm": 27.999536,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 0.756315,
+      "y_mm": 16.745873,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_2",
+      "x_mm": 16.928596,
+      "y_mm": -0.541517,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_3",
+      "x_mm": 27.971536,
+      "y_mm": 28.055106,
+      "rotation": 270
+    },
+    {
+      "name": "DRAM_4",
+      "x_mm": 28.213845,
+      "y_mm": 2.161044,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_5",
+      "x_mm": 18.8671,
+      "y_mm": 28.127516,
+      "rotation": 270
+    }
+  ]
+}
