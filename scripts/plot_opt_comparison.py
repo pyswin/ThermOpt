@@ -130,29 +130,26 @@ def main(run_dir: Path):
         ufno_o = ufno_predict(case, layout_o)
         print(f"  UFNO  init={ufno_i.max():.1f}°C  opt={ufno_o.max():.1f}°C  Δ={ufno_o.max()-ufno_i.max():+.1f}°C")
 
-        # --- HotSpot predictions (cached per layout) ---
+        # --- HotSpot predictions (cached in run directory, same backend for consistency) ---
         cache_dir = run_dir / case_name
         cache_dir.mkdir(exist_ok=True)
 
-        # Initial: check if we already have a cache from the MILP run
-        milp_cache = ROOT / f"atplace/thermal_runs/20260628_004144_maxT/{case_name}/grid_cache_init.npz"
         t0_hs = time.time()
-        if milp_cache.exists():
-            hs_i = np.load(milp_cache)["hs"]
-            print(f"  HotSpot initial: loaded from MILP cache ({hs_i.max():.1f}°C)")
-        else:
-            hs_i = hotspot_predict(case, layout_i, cache_dir / "hs_initial.npz")
-            print(f"  HotSpot initial: {hs_i.max():.1f}°C ({time.time()-t0_hs:.0f}s)")
+        hs_i = hotspot_predict(case, layout_i, cache_dir / "hs_initial.npz")
+        print(f"  HotSpot initial: {hs_i.max():.1f}°C ({time.time()-t0_hs:.0f}s)")
 
         t0_hs = time.time()
         hs_o = hotspot_predict(case, layout_o, cache_dir / "hs_optimized.npz")
         print(f"  HotSpot opt:     {hs_o.max():.1f}°C ({time.time()-t0_hs:.0f}s)")
 
-        # Resample UFNO to HotSpot grid for error map
-        zy = hs_i.shape[0] / ufno_i.shape[0]
-        zx = hs_i.shape[1] / ufno_i.shape[1]
-        ufno_i_r = zoom(ufno_i, (zy, zx), order=1)
-        ufno_o_r = zoom(ufno_o, (zy, zx), order=1)
+        # Resample UFNO (64,64) to each HotSpot grid independently
+        def resample_ufno(ufno_grid, hs_grid):
+            zy = hs_grid.shape[0] / ufno_grid.shape[0]
+            zx = hs_grid.shape[1] / ufno_grid.shape[1]
+            return zoom(ufno_grid, (zy, zx), order=1)
+
+        ufno_i_r = resample_ufno(ufno_i, hs_i)
+        ufno_o_r = resample_ufno(ufno_o, hs_o)
 
         err_i = hs_i - ufno_i_r
         err_o = hs_o - ufno_o_r
