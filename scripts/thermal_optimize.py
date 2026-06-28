@@ -1,42 +1,57 @@
 """
-thermal_optimize.py — 热感知布局优化主脚本（无 WL 约束，全力降温）
+thermal_optimize.py — 热感知布局优化主脚本（UFNO 热模型，无 WL 约束）
 
-默认有效 case（ThermOpt HPWL / ATPlace TWL < 1.15x）：Case3, Case5, Case6, Case7, Case8
-  排除：Case1/2/4（坐标偏差较大）；Case9/10（未测试）
-
-权重配置：wl_weight=1, thermal_weight=10000（比值约 1:10000，热目标主导）
-热目标：tmax（最高温）和 tmax50（前 50 热点均值）各跑一次
+默认有效 case：Case3, Case5, Case6, Case7, Case8
+热目标：tmax 和 tmax50 各跑一次
 结果保存至 atplace/thermal_runs/{timestamp}_{tag}/
 """
 import sys, json, math, time
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "src/thermopt/thermal/ufno_demo"))
+
+import numpy as np
+import torch
 
 from thermopt.data.atplace import load_atplace_case
 from thermopt.layout.objects import Layout, Placement
 from thermopt.layout.geometry import hpwl
 from thermopt.optimizer.atplace import _analytical_refine
-from thermopt.thermal.thermfm import ThermFMThermalBackend
+from thermopt.thermal.surrogate_input import (
+    coordinate_grid, rasterize_power_channel, SURROGATE_NATIVE_GRID_SIZE,
+)
 
 SCALE     = 0.001
-CASES_DIR = Path(__file__).parent.parent / "external/ATPlace_pub/cases"
-MILP_DIR  = Path(__file__).parent.parent / "atplace/20260627_163106_milp150s"
-MODEL_DIR = Path(__file__).parent.parent / "src/thermopt/thermal/thermfm_t_case_all_demo/model"
-RUNS_DIR  = Path(__file__).parent.parent / "atplace/thermal_runs"
+CASES_DIR = ROOT / "external/ATPlace_pub/cases"
+MILP_DIR  = ROOT / "atplace/20260627_163106_milp150s"
+UFNO_PT   = ROOT / "src/thermopt/thermal/ufno_demo/model.pt"
+RUNS_DIR  = ROOT / "atplace/thermal_runs"
 
 VALID_CASES = ["Case3", "Case5", "Case6", "Case7", "Case8"]
 
 BASE_CONFIG = dict(
-    refine_steps=300,
-    learning_rate=0.05,
+    refine_steps=800,
+    learning_rate=0.03,
     density_weight=5000.0,
     outline_weight=20000.0,
     wl_weight=1.0,
-    wl_budget_weight=0.0,   # no WL constraint
-    wl_budget_factor=0.0,   # no WL constraint
+    wl_budget_weight=0.0,
+    wl_budget_factor=0.0,
 )
+
+# UFNO model cache
+_UFNO_CACHE: dict = {}
+
+def _get_ufno():
+    if "state" not in _UFNO_CACHE:
+        x_norm, model, y_norm = torch.load(str(UFNO_PT), map_location="cpu", weights_only=False)
+        model.eval()
+        _UFNO_CACHE["state"] = (x_norm, model, y_norm)
+        print(f"[UFNO eval] loaded ({sum(p.numel() for p in model.parameters())/1e6:.1f}M params)")
+    return _UFNO_CACHE["state"]
 
 
 def load_layout(path: Path) -> list[Placement]:
@@ -65,11 +80,20 @@ def layout_to_dict(case, layout):
     ]
 
 
-def eval_layout(case, layout, backend):
-    wl_m = hpwl(case, layout) / 1e3
-    temp_map = backend.simulate(case, layout)
-    flat = sorted(temp_map.flatten(), reverse=True)
-    return float(flat[0]), float(sum(flat[:50]) / 50), wl_m
+def ufno_eval(case, layout):
+    """Evaluate layout with UFNO: returns (tmax_c, t50_c, wl_m)."""
+    x_norm, model, y_norm = _get_ufno()
+    gx, gy = coordinate_grid(case, SURROGATE_NATIVE_GRID_SIZE)
+    power  = np.zeros((64, 64), dtype=np.float32)
+    rasterize_power_channel(case, layout, gx, gy, out=power)
+    x_phys = np.stack([power, gx, gy], axis=-1)[:, :, np.newaxis, :]
+    xt = torch.from_numpy(x_phys).unsqueeze(0)
+    with torch.no_grad():
+        pred_k = y_norm.inverse(model(x_norm.forward(xt)))[0, :, :, 0].numpy()
+    temp_c = pred_k - 273.15
+    flat   = np.sort(temp_c.flatten())[::-1]
+    wl_m   = hpwl(case, layout) / 1e3
+    return float(flat[0]), float(flat[:50].mean()), wl_m
 
 
 def main(cases=None, thermal_weight=10000, tag=""):
@@ -80,14 +104,13 @@ def main(cases=None, thermal_weight=10000, tag=""):
     run_dir = RUNS_DIR / label
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    from thermopt.thermal.grad_thermal import load_scot_for_grad
-    load_scot_for_grad(str(MODEL_DIR))
+    _get_ufno()   # preload model
     print(f"[{label}]  tw={thermal_weight}  cases={cases}\n")
 
     all_results = {}
     t_wall_start = time.time()
 
-    modes = [("tmax", "tmax"), ("tmax50", "tmax50")]
+    modes = [("tmax", "tmax")]
 
     for case_name in cases:
         print(f"{'='*60}")
@@ -96,15 +119,11 @@ def main(cases=None, thermal_weight=10000, tag=""):
 
         case_input = load_atplace_case(CASES_DIR / case_name, {}, 42)
         case = case_input.case
-        backend = ThermFMThermalBackend(
-            case=case,
-            config={"backend": "thermfm", "thermfm_model_dir": str(MODEL_DIR)},
-        )
 
         init_placements = load_layout(MILP_DIR / case_name / "layout.json")
         layout0 = Layout(placements=init_placements)
 
-        t0, t50_0, wl0 = eval_layout(case, layout0, backend)
+        t0, t50_0, wl0 = ufno_eval(case, layout0)
         atp_wl = json.load(open(MILP_DIR / case_name / "summary.json"))["twl_m"]
 
         print(f"  Initial:  HPWL={wl0:.3f}m (ATPlace TWL={atp_wl:.3f}m)  Tmax={t0:.1f}C  Tmax50={t50_0:.1f}C\n")
@@ -119,16 +138,16 @@ def main(cases=None, thermal_weight=10000, tag=""):
         for m_key, m_mode in modes:
             config = {
                 **BASE_CONFIG,
-                "thermal_weight":  float(thermal_weight),
-                "thermal_mode":    m_mode,
-                "thermfm_model_dir": str(MODEL_DIR),
+                "thermal_weight":     float(thermal_weight),
+                "thermal_mode":       m_mode,
+                "thermal_model_path": str(UFNO_PT),
             }
 
             t_start = time.time()
             layout1 = _analytical_refine(case, layout0, config, seed=42)
             elapsed = time.time() - t_start
 
-            t1, t50_1, wl1 = eval_layout(case, layout1, backend)
+            t1, t50_1, wl1 = ufno_eval(case, layout1)
             dwl   = (wl1 - wl0) / wl0 * 100
             dt    = t1 - t0
             dt50  = t50_1 - t50_0
