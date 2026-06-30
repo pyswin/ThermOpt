@@ -18,6 +18,7 @@
     python3 scripts/test_thermal.py --cases Case3 --backend thermfm --hotspot
     # 多后端 + HotSpot + 出图
     python3 scripts/test_thermal.py --cases Case3 --backends ufno thermfm --hotspot --plot
+    python3 scripts/test_thermal.py --cases Case3 Case5 Case6 Case7 --backends ufno thermfm --hotspot --plot
 """
 import argparse
 import json

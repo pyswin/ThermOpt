@@ -44,7 +44,7 @@ def coordinate_grid(case: FloorplanCase, grid_size: tuple[int, int] = SURROGATE_
     nx, ny = int(grid_size[0]), int(grid_size[1])
     xs = np.linspace(0.0, float(case.outline_width), nx, dtype=np.float32)
     ys = np.linspace(0.0, float(case.outline_height), ny, dtype=np.float32)
-    grid_x, grid_y = np.meshgrid(xs, ys, indexing="ij")
+    grid_x, grid_y = np.meshgrid(xs, ys, indexing="xy")
     return grid_x.astype(np.float32), grid_y.astype(np.float32)
 
 
