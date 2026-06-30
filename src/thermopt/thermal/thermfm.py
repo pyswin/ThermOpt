@@ -22,7 +22,7 @@ from thermopt.thermal.surrogate_input import (
 
 
 def _default_demo_root() -> Path:
-    return Path(__file__).with_name("thermfm_t_case_all_demo")
+    return Path(__file__).with_name("thermfm_t")
 
 
 @dataclass

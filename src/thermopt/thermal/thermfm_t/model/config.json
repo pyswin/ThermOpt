@@ -1,0 +1,72 @@
+{
+  "_name_or_path": "/data/sc/menglinghai/pretrained/Poseidon-T",
+  "architectures": [
+    "ScOT"
+  ],
+  "attention_probs_dropout_prob": 0.0,
+  "channel_slice_list_normalized_loss": [
+    0,
+    1
+  ],
+  "depths": [
+    4,
+    4,
+    4,
+    4
+  ],
+  "drop_path_rate": 0.0,
+  "embed_dim": 48,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.0,
+  "hidden_size": 384,
+  "hotspot_alpha": 0.995,
+  "hotspot_lambda": 0.05,
+  "hotspot_warmup_epochs": 10,
+  "image_size": 64,
+  "initializer_range": 0.02,
+  "layer_norm_eps": 1e-05,
+  "learn_residual": false,
+  "mlp_ratio": 4.0,
+  "model_type": "swinv2",
+  "num_channels": 3,
+  "num_heads": [
+    3,
+    6,
+    12,
+    24
+  ],
+  "num_layers": 4,
+  "num_out_channels": 1,
+  "p": 2,
+  "patch_size": 4,
+  "pinn_htc_weight": 0.05,
+  "pinn_pde_weight": 0.05,
+  "pinn_supervised_weight": 1.0,
+  "pinn_top_weight": 0.05,
+  "pretrained_window_sizes": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "qkv_bias": true,
+  "residual_model": "convnext",
+  "skip_connections": [
+    2,
+    2,
+    2,
+    0
+  ],
+  "thermal_boundary_dilate": 3,
+  "thermal_boundary_lambda": 0.0,
+  "thermal_grad_lambda": 0.1,
+  "thermal_hot_alpha": 0.9,
+  "thermal_hot_lambda": 0.5,
+  "thermal_peak_lambda": 0.1,
+  "thermal_warmup_epochs": 0,
+  "torch_dtype": "float32",
+  "transformers_version": "4.29.2",
+  "use_absolute_embeddings": false,
+  "use_conditioning": false,
+  "window_size": 16
+}

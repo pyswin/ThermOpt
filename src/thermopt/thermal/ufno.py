@@ -109,7 +109,7 @@ class UFNOThermalBackend:
                 raise ValueError(
                     f"U-FNO input must have shape (64, 64, 1, 3), got {input_phys.shape}"
                 )
-            x = torch.from_numpy(input_phys).unsqueeze(0)
+            x = torch.from_numpy(input_phys).unsqueeze(0).to(next(model.parameters()).device)
             with torch.inference_mode():
                 xn = x_normalizer.forward(x)
                 out = model(xn)
