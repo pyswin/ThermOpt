@@ -28,3 +28,5 @@ src/thermopt/input_sample.npy
 src/thermopt/thermal/thermfm_t/model/*.bin
 src/thermopt/thermal/thermfm_t/model/*.safetensors
 src/thermopt/thermal/ufno_demo/*.pt
+
+src/thermopt/thermal/thermfm_t/model.case_all_bak/
