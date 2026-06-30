@@ -81,6 +81,7 @@ def _solve_clump_milp(case: FloorplanCase, config: dict) -> tuple[Layout, bool, 
     time_limit = float(config.get("milp_time_limit", 120.0))
     mip_rel_gap = float(config.get("mip_rel_gap", 0.001))
     verbose = bool(config.get("verbose", False))
+    min_spacing = float(config.get("min_chiplet_spacing", 0.0))
 
     ids = [chiplet.id for chiplet in case.chiplets]
     index = {chiplet_id: i for i, chiplet_id in enumerate(ids)}
@@ -149,16 +150,16 @@ def _solve_clump_milp(case: FloorplanCase, config: dict) -> tuple[Layout, bool, 
         add(coeff_y, hi=0.0)
         add({col: -value for col, value in coeff_y.items() if col != ty0 + k} | {ty0 + k: -1.0}, hi=0.0)
 
-    big_m = max(case.outline_width, case.outline_height) + 2.0 * max(max(c.width, c.height) for c in case.chiplets)
+    big_m = max(case.outline_width, case.outline_height) + 2.0 * max(max(c.width, c.height) for c in case.chiplets) + min_spacing
     for pair_index, (i, j) in enumerate(geom_pairs):
         s_left = b0 + 4 * pair_index
         s_right = s_left + 1
         s_below = s_left + 2
         s_above = s_left + 3
-        add(_separation_row(case, ids, o0, x0 + i, x0 + j, i, j, "x", s_left, -big_m), hi=0.0)
-        add(_separation_row(case, ids, o0, x0 + j, x0 + i, j, i, "x", s_right, -big_m), hi=0.0)
-        add(_separation_row(case, ids, o0, y0 + i, y0 + j, i, j, "y", s_below, -big_m), hi=0.0)
-        add(_separation_row(case, ids, o0, y0 + j, y0 + i, j, i, "y", s_above, -big_m), hi=0.0)
+        add(_separation_row(case, ids, o0, x0 + i, x0 + j, i, j, "x", s_left, -big_m), hi=-min_spacing)
+        add(_separation_row(case, ids, o0, x0 + j, x0 + i, j, i, "x", s_right, -big_m), hi=-min_spacing)
+        add(_separation_row(case, ids, o0, y0 + i, y0 + j, i, j, "y", s_below, -big_m), hi=-min_spacing)
+        add(_separation_row(case, ids, o0, y0 + j, y0 + i, j, i, "y", s_above, -big_m), hi=-min_spacing)
         add({s_left: 1.0, s_right: 1.0, s_below: 1.0, s_above: 1.0}, hi=3.0)
 
     matrix = lil_matrix((len(rows), num_vars))
