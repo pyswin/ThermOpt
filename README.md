@@ -175,11 +175,20 @@ Case1/2/4 存在坐标解析偏差，暂不纳入；Case9/10 未测试。
 
 | 量 | 单位 | 备注 |
 |----|------|------|
-| 布局坐标 | mm | 内部表示；layout.json 存储 μm，读取时 ×0.001 |
+| 布局坐标 | mm | **内部优化统一使用中心坐标 (`cx/cy`)；HotSpot 输入和点式数据导出使用左下角坐标 (`x/y`)**。ATPlace `layout.json` 原始坐标是中心坐标，读取时按中心保留，写入 HotSpot 前再转换为左下角。 |
 | 线长（ATPlace） | m | `twl_m = hpwl / 1e6` |
 | 线长（ThermOpt） | m | `thermopt_wl_m = hpwl() / 1e3` |
 | 温度 | °C | HotSpot 输出 Kelvin，减 273.15；ScOT 同 |
 | ScOT 输入网格 | 64×64 | 坐标范围 0 到 `outline_width/height`（mm） |
+
+### 坐标语义
+
+- `Placement.x/y`：内部统一解释为 chiplet **中心坐标**。
+- `chiplet_configs` 中新增的 `cx/cy`：中心坐标，供优化器、后处理和新热预测模型使用。
+- `chiplet_configs` 中保留的 `x/y`：左下角坐标，供 HotSpot `.flp` 写文件和兼容旧处理链路使用。
+- `layout.json` 中的 ATPlace 原始布局：`x/y` 也是中心坐标。
+- 点式数据 `pointwise/*.csv` 只表达网格采样，不表达 chiplet 几何中心；它仍然通过 `chiplet_id` 和 `chiplet_power` 记录该网格点落在哪个器件上。
+- 读取旧数据时，如果没有 `cx/cy`，脚本会回退到由 `x/y + width/2, height/2` 推导中心坐标。
 
 ---
 

@@ -46,6 +46,13 @@ class Placement:
     y: float
     rotation: int = 0
 
+    def center(self) -> tuple[float, float]:
+        return self.x, self.y
+
+    def lower_left(self, chiplet: Chiplet) -> tuple[float, float]:
+        width, height = self.rotated_size(chiplet)
+        return self.x - width * 0.5, self.y - height * 0.5
+
     def rotated_size(self, chiplet: Chiplet) -> tuple[float, float]:
         if self.rotation % 180 == 90:
             return chiplet.height, chiplet.width

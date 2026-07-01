@@ -48,7 +48,7 @@ def load_layout_opt(case_name):
     d = json.load(open(RUN_DIR / case_name / MODE / "summary.json"))
     return Layout(placements=[
         Placement(chiplet_id=c["name"],
-                  x=c["x_mm"], y=c["y_mm"],
+                  x=c.get("cx_mm", c["x_mm"]), y=c.get("cy_mm", c["y_mm"]),
                   rotation=c["rotation"])
         for c in d["chiplets"]
     ])
