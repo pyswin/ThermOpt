@@ -86,7 +86,7 @@ def load_milp_layout(case_name) -> Layout:
     d = json.load(open(MILP_DIR / case_name / "layout.json"))
     return Layout(placements=[
         Placement(chiplet_id=c["name"],
-                  x=c["x"] * SCALE, y=c["y"] * SCALE,
+                  x=c.get("cx_mm", c["x"] * SCALE), y=c.get("cy_mm", c["y"] * SCALE),
                   rotation=int(round(math.degrees(c["angle_rad"]))) % 360)
         for c in d["chiplets"]
     ])
@@ -95,7 +95,7 @@ def load_milp_layout(case_name) -> Layout:
 def load_opt_layout(run_dir, case_name) -> Layout:
     d = json.load(open(run_dir / case_name / "tmax/summary.json"))
     return Layout(placements=[
-        Placement(chiplet_id=c["name"], x=c["x_mm"], y=c["y_mm"], rotation=c["rotation"])
+        Placement(chiplet_id=c["name"], x=c.get("cx_mm", c["x_mm"]), y=c.get("cy_mm", c["y_mm"]), rotation=c["rotation"])
         for c in d["chiplets"]
     ])
 

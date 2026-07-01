@@ -68,7 +68,7 @@ def load_milp(case_name: str) -> Layout:
     d = json.load(open(MILP_DIR / case_name / "layout.json"))
     return Layout(placements=[
         Placement(chiplet_id=c["name"],
-                  x=c["x"] * SCALE, y=c["y"] * SCALE,
+                  x=c.get("cx_mm", c["x"] * SCALE), y=c.get("cy_mm", c["y"] * SCALE),
                   rotation=int(round(math.degrees(c["angle_rad"]))) % 360)
         for c in d["chiplets"]
     ])
@@ -79,9 +79,9 @@ def load_custom(path: str) -> Layout:
     placements = []
     for c in d.get("chiplets", []):
         if "x_mm" in c:                       # summary.json 格式
-            x, y = c["x_mm"], c["y_mm"]
+            x, y = c.get("cx_mm", c["x_mm"]), c.get("cy_mm", c["y_mm"])
         else:                                  # layout.json 格式 (μm)
-            x, y = c["x"] * SCALE, c["y"] * SCALE
+            x, y = c.get("cx_mm", c["x"] * SCALE), c.get("cy_mm", c["y"] * SCALE)
         rot = c.get("rotation", int(round(math.degrees(c.get("angle_rad", 0)))) % 360)
         placements.append(Placement(chiplet_id=c["name"], x=x, y=y, rotation=rot))
     return Layout(placements=placements)

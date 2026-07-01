@@ -101,7 +101,7 @@ def _parse_pl_layout(path: Path, case: FloorplanCase, scale: float) -> Layout:
         chiplet = chiplets[words[0]]
         cx = float(words[1]) * scale
         cy = float(words[2]) * scale
-        placements.append(Placement(chiplet.id, cx - chiplet.width * 0.5, cy - chiplet.height * 0.5))
+        placements.append(Placement(chiplet.id, cx, cy))
     return Layout(tuple(placements))
 
 

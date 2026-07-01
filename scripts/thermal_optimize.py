@@ -74,6 +74,8 @@ def layout_to_dict(case, layout):
             "name": p.chiplet_id,
             "x_mm": round(p.x, 6),
             "y_mm": round(p.y, 6),
+            "cx_mm": round(p.x, 6),
+            "cy_mm": round(p.y, 6),
             "rotation": p.rotation,
         }
         for p in layout.placements

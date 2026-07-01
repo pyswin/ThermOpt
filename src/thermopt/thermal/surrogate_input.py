@@ -92,4 +92,3 @@ def resample_grid(grid: np.ndarray, target_size: tuple[int, int]) -> np.ndarray:
     row_interp = np.array([np.interp(tgt_x, src_x, row) for row in grid], dtype=float)
     col_interp = np.array([np.interp(tgt_y, src_y, row_interp[:, col]) for col in range(row_interp.shape[1])], dtype=float)
     return col_interp.T
-
