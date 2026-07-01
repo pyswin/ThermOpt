@@ -48,6 +48,42 @@ SCALE = 0.001  # layout.json 存 μm → mm
 AI_BACKENDS = {"ufno", "ufno_demo", "thermfm", "thermfm_t"}
 
 
+def plot_compare_multi(cases_data, out_path):
+    """visualize.py style, multiple cases in ONE figure. rows = case x backend;
+    cols = Ground Truth (HotSpot) | Prediction | Error. Per-case color scale."""
+    plt = _mpl()
+    row_specs = []
+    for (cn, W, H, hs, bes) in cases_data:
+        ai = bes[0][1].shape
+        hs_r = resample_grid(hs, ai) if hs.shape != ai else hs
+        vmin_c = min(float(hs_r.min()), min(float(g.min()) for _, g in bes))
+        vmax_c = max(float(hs_r.max()), max(float(g.max()) for _, g in bes))
+        for (bn, g) in bes:
+            row_specs.append((cn, bn, W, H, hs_r, g, vmin_c, vmax_c))
+    n = len(row_specs)
+    fig, axes = plt.subplots(n, 3, figsize=(11.5, 3.2 * n), squeeze=False, constrained_layout=True)
+    col_titles = ["Ground Truth (HotSpot)", "Prediction", "Error (Pred - GT)"]
+    for r, (cn, bn, W, H, hs_r, g, vmin, vmax) in enumerate(row_specs):
+        resid = g - hs_r
+        emax = max(float(max(abs(resid.min()), abs(resid.max()))), 1e-6)
+        im0 = axes[r, 0].imshow(hs_r, origin="lower", extent=[0, W, 0, H], cmap="jet", vmin=vmin, vmax=vmax, aspect="equal")
+        im1 = axes[r, 1].imshow(g, origin="lower", extent=[0, W, 0, H], cmap="jet", vmin=vmin, vmax=vmax, aspect="equal")
+        im2 = axes[r, 2].imshow(resid, origin="lower", extent=[0, W, 0, H], cmap="RdBu_r", vmin=-emax, vmax=emax, aspect="equal")
+        for im, ax, lab in zip((im0, im1, im2), axes[r], ("°C", "°C", "ΔT (°C)")):
+            ax.set_xticks([]); ax.set_yticks([])
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label(lab)
+        axes[r, 0].set_ylabel(f"{cn} / {bn}", fontsize=9)
+        if r == 0:
+            for c, t in enumerate(col_titles):
+                axes[0, c].set_title(t, fontsize=11)
+        axes[r, 2].text(0.02, 0.02, f"max |Δ| {float(np.abs(resid).max()):.2f} °C",
+                        transform=axes[r, 2].transAxes, fontsize=8, va="bottom",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7))
+    cases_str = " / ".join(cd[0] for cd in cases_data)
+    fig.suptitle(f"{cases_str} — HotSpot vs surrogates (°C)", fontsize=13)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
 # ---------------------------------------------------------------------------
 # 指标
 # ---------------------------------------------------------------------------
@@ -192,55 +228,35 @@ def plot_error(err, title, out_path, W, H, vmax=None):
 
 
 def plot_compare(case_name, hs_grid, be_results, W, H, out_path):
-    """一行: HotSpot | be1 | be1−HS | be2 | be2−HS ...
-    每个子图都带坐标轴 (x/y mm) 与 colorbar (温度图 °C，误差图 ΔT °C)，温度图共享色标。"""
+    """visualize.py style: one row per backend; cols = Ground Truth (HotSpot) | Prediction | Error.
+    GT/Pred share scale (jet); Error = signed residual (RdBu_r); per-panel colorbar + max|Δ|; no ticks."""
     plt = _mpl()
     n = len(be_results)
-    ncols = 1 + n + n
-    fig, axes = plt.subplots(1, ncols, figsize=(3.9 * ncols, 4.2))
-    if ncols == 1:
-        axes = [axes]
     ai_shape = be_results[0][1].shape
     hs_r = resample_grid(hs_grid, ai_shape) if hs_grid.shape != ai_shape else hs_grid
-
     vmin = min(float(hs_r.min()), min(float(g.min()) for _, g in be_results))
     vmax = max(float(hs_r.max()), max(float(g.max()) for _, g in be_results))
-
-    def _style(ax, title, im, cbar_label):
-        ax.set_title(title, fontsize=9)
-        ax.set_xlabel("x (mm)", fontsize=8)
-        ax.set_ylabel("y (mm)", fontsize=8)
-        ax.tick_params(labelsize=7)
-        cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cb.set_label(cbar_label, fontsize=8)
-        cb.ax.tick_params(labelsize=7)
-
-    col = 0
-    im = axes[col].imshow(hs_r, origin="lower", extent=[0, W, 0, H],
-                          cmap="inferno", vmin=vmin, vmax=vmax, aspect="equal")
-    _style(axes[col], "HotSpot", im, "°C")
-    col += 1
-    for name, g in be_results:
-        im = axes[col].imshow(g, origin="lower", extent=[0, W, 0, H],
-                              cmap="inferno", vmin=vmin, vmax=vmax, aspect="equal")
-        _style(axes[col], name, im, "°C")
-        col += 1
-    errs, emax = [], 0.0
-    for name, g in be_results:
-        e = g - hs_r
-        errs.append(e)
-        emax = max(emax, float(np.nanmax(np.abs(e))))
-    emax = max(emax, 1e-6)
-    for e, (name, _) in zip(errs, be_results):
-        im = axes[col].imshow(e, origin="lower", extent=[0, W, 0, H],
-                              cmap="RdBu_r", vmin=-emax, vmax=emax, aspect="equal")
-        _style(axes[col], f"{name}−HS", im, "ΔT (°C)")
-        col += 1
-    fig.suptitle(f"{case_name} — HotSpot vs surrogates (°C)", fontsize=11)
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=130)
+    fig, axes = plt.subplots(n, 3, figsize=(11.5, 3.2 * n), squeeze=False, constrained_layout=True)
+    col_titles = ["Ground Truth (HotSpot)", "Prediction", "Error (Pred - GT)"]
+    for r, (name, g) in enumerate(be_results):
+        resid = g - hs_r
+        emax = max(float(max(abs(resid.min()), abs(resid.max()))), 1e-6)
+        im0 = axes[r, 0].imshow(hs_r, origin="lower", extent=[0, W, 0, H], cmap="jet", vmin=vmin, vmax=vmax, aspect="equal")
+        im1 = axes[r, 1].imshow(g, origin="lower", extent=[0, W, 0, H], cmap="jet", vmin=vmin, vmax=vmax, aspect="equal")
+        im2 = axes[r, 2].imshow(resid, origin="lower", extent=[0, W, 0, H], cmap="RdBu_r", vmin=-emax, vmax=emax, aspect="equal")
+        for im, ax, lab in zip((im0, im1, im2), axes[r], ("°C", "°C", "ΔT (°C)")):
+            ax.set_xticks([]); ax.set_yticks([])
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label(lab)
+        axes[r, 0].set_ylabel(name, fontsize=10)
+        if r == 0:
+            for c, t in enumerate(col_titles):
+                axes[0, c].set_title(t, fontsize=11)
+        axes[r, 2].text(0.02, 0.02, f"max |Δ| {float(np.abs(resid).max()):.2f} °C",
+                        transform=axes[r, 2].transAxes, fontsize=8, va="bottom",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.7))
+    fig.suptitle(f"{case_name} — HotSpot vs surrogates (°C)", fontsize=13)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-
 
 # ---------------------------------------------------------------------------
 # 主逻辑
@@ -286,6 +302,7 @@ def main():
         print(f"[weights] thermfm: {args.thermfm_model}")
 
     rows = []
+    all_cases_data = []
     for case_name in args.cases:
         ci = load_atplace_case(CASES_DIR / case_name, {}, 42)
         case = ci.case
@@ -325,26 +342,16 @@ def main():
             be_grids.append((be_name, grid))
             print(f"[{case_name}] {be_name}: Tmax={m['tmax']:.2f}°C Tmax50={m['tmax50']:.2f}°C ({rt:.1f}s)")
 
-        # ---- 出图 ----
-        if args.plot and plot_dir is not None:
-            vmin = min(float(g.min()) for _, g in be_grids)
-            vmax = max(float(g.max()) for _, g in be_grids)
-            if hs_grid is not None:
-                vmin = min(vmin, float(hs_grid.min()))
-                vmax = max(vmax, float(hs_grid.max()))
-            for name, g in be_grids:
-                plot_single(g, f"{case_name} — {name} (°C)",
-                            plot_dir / f"{case_name}_{name}_temp.png", W, H, vmin, vmax)
-            if hs_grid is not None:
-                plot_single(hs_grid, f"{case_name} — HotSpot (°C)",
-                            plot_dir / f"{case_name}_hotspot_temp.png", W, H, vmin, vmax)
-                for name, g in be_grids:
-                    hs_r = resample_grid(hs_grid, g.shape) if hs_grid.shape != g.shape else hs_grid
-                    plot_error(g - hs_r, f"{case_name} — {name} − HotSpot (°C)",
-                               plot_dir / f"{case_name}_{name}_error.png", W, H)
-                if len(be_grids) > 1:
-                    plot_compare(case_name, hs_grid, be_grids, W, H,
-                                 plot_dir / f"{case_name}_compare.png")
+        if args.plot and plot_dir is not None and hs_grid is not None and be_grids:
+            all_cases_data.append((case_name, W, H, hs_grid, list(be_grids)))
+
+    if args.plot and plot_dir is not None and all_cases_data:
+        if len(all_cases_data) == 1:
+            out_png = plot_dir / f"{all_cases_data[0][0]}_compare.png"
+        else:
+            out_png = plot_dir / "compare.png"
+        plot_compare_multi(all_cases_data, out_png)
+        print(f"[plot] combined compare -> {out_png}")
 
     print_table(rows, with_hotspot=args.hotspot)
 
