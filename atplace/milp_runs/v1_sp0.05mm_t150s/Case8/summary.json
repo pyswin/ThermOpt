@@ -1,0 +1,230 @@
+{
+  "wl_m": 14.031204485745132,
+  "milp_time_s": 150.1093029975891,
+  "milp_success": false,
+  "hs_tmax": 60.17600051144356,
+  "hs_t50": 60.01538539828668,
+  "ufno_tmax": 58.76678466796875,
+  "ufno_t50": 58.134639739990234,
+  "err_tmax": -1.4092158434748114,
+  "err_t50": -1.8807456582964477,
+  "hotspot_time_s": 216.1521372795105,
+  "chiplets": [
+    {
+      "name": "CPU1_0",
+      "x_mm": 19.45,
+      "y_mm": 9.95,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_1",
+      "x_mm": 8.25,
+      "y_mm": 14.929091,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_2",
+      "x_mm": 10.29,
+      "y_mm": 9.8,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_3",
+      "x_mm": 14.85,
+      "y_mm": 10.364545,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_4",
+      "x_mm": 13.95,
+      "y_mm": 6.1,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_5",
+      "x_mm": 10.8,
+      "y_mm": 3.05,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_6",
+      "x_mm": 1.079545,
+      "y_mm": 10.3,
+      "rotation": 90
+    },
+    {
+      "name": "CPU1_7",
+      "x_mm": 4.7,
+      "y_mm": 3.7,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_8",
+      "x_mm": 7.25,
+      "y_mm": 7.25,
+      "rotation": 90
+    },
+    {
+      "name": "CPU1_9",
+      "x_mm": 3.529545,
+      "y_mm": 15.4,
+      "rotation": 90
+    },
+    {
+      "name": "CPU1_10",
+      "x_mm": 10.8,
+      "y_mm": 15.964545,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_11",
+      "x_mm": 10.8,
+      "y_mm": 13.414545,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_0",
+      "x_mm": 23.0,
+      "y_mm": 9.65,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_1",
+      "x_mm": 23.0,
+      "y_mm": 11.7,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_2",
+      "x_mm": 10.2,
+      "y_mm": 19.514545,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_3",
+      "x_mm": 8.15,
+      "y_mm": 18.479091,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_4",
+      "x_mm": 7.54,
+      "y_mm": 0.65,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_5",
+      "x_mm": 15.74,
+      "y_mm": 4.05,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_6",
+      "x_mm": 19.45,
+      "y_mm": 12.5,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_7",
+      "x_mm": 14.51,
+      "y_mm": 15.964545,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_8",
+      "x_mm": 13.69,
+      "y_mm": 1.15,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_9",
+      "x_mm": 18.79,
+      "y_mm": 3.05,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_10",
+      "x_mm": 9.59,
+      "y_mm": 0.0,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_11",
+      "x_mm": 11.64,
+      "y_mm": 0.0,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_12",
+      "x_mm": 0.6,
+      "y_mm": 12.85,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_13",
+      "x_mm": 0.1,
+      "y_mm": 7.25,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_14",
+      "x_mm": 5.46,
+      "y_mm": 10.3,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_15",
+      "x_mm": 2.65,
+      "y_mm": 4.2,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_16",
+      "x_mm": 5.2,
+      "y_mm": 7.25,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_17",
+      "x_mm": 2.15,
+      "y_mm": 7.25,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_18",
+      "x_mm": 3.05,
+      "y_mm": 19.514545,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_19",
+      "x_mm": 0.0,
+      "y_mm": 15.9,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_20",
+      "x_mm": 12.25,
+      "y_mm": 20.0,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_21",
+      "x_mm": 5.1,
+      "y_mm": 17.95,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_22",
+      "x_mm": 14.35,
+      "y_mm": 13.914545,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_23",
+      "x_mm": 17.4,
+      "y_mm": 12.775,
+      "rotation": 90
+    }
+  ]
+}

@@ -81,6 +81,7 @@ def _solve_clump_milp(case: FloorplanCase, config: dict) -> tuple[Layout, bool, 
     time_limit = float(config.get("milp_time_limit", 120.0))
     mip_rel_gap = float(config.get("mip_rel_gap", 0.001))
     verbose = bool(config.get("verbose", False))
+    min_spacing = float(config.get("min_chiplet_spacing", 0.0))
 
     ids = [chiplet.id for chiplet in case.chiplets]
     index = {chiplet_id: i for i, chiplet_id in enumerate(ids)}
@@ -149,16 +150,16 @@ def _solve_clump_milp(case: FloorplanCase, config: dict) -> tuple[Layout, bool, 
         add(coeff_y, hi=0.0)
         add({col: -value for col, value in coeff_y.items() if col != ty0 + k} | {ty0 + k: -1.0}, hi=0.0)
 
-    big_m = max(case.outline_width, case.outline_height) + 2.0 * max(max(c.width, c.height) for c in case.chiplets)
+    big_m = max(case.outline_width, case.outline_height) + 2.0 * max(max(c.width, c.height) for c in case.chiplets) + min_spacing
     for pair_index, (i, j) in enumerate(geom_pairs):
         s_left = b0 + 4 * pair_index
         s_right = s_left + 1
         s_below = s_left + 2
         s_above = s_left + 3
-        add(_separation_row(case, ids, o0, x0 + i, x0 + j, i, j, "x", s_left, -big_m), hi=0.0)
-        add(_separation_row(case, ids, o0, x0 + j, x0 + i, j, i, "x", s_right, -big_m), hi=0.0)
-        add(_separation_row(case, ids, o0, y0 + i, y0 + j, i, j, "y", s_below, -big_m), hi=0.0)
-        add(_separation_row(case, ids, o0, y0 + j, y0 + i, j, i, "y", s_above, -big_m), hi=0.0)
+        add(_separation_row(case, ids, o0, x0 + i, x0 + j, i, j, "x", s_left, -big_m), hi=-min_spacing)
+        add(_separation_row(case, ids, o0, x0 + j, x0 + i, j, i, "x", s_right, -big_m), hi=-min_spacing)
+        add(_separation_row(case, ids, o0, y0 + i, y0 + j, i, j, "y", s_below, -big_m), hi=-min_spacing)
+        add(_separation_row(case, ids, o0, y0 + j, y0 + i, j, i, "y", s_above, -big_m), hi=-min_spacing)
         add({s_left: 1.0, s_right: 1.0, s_below: 1.0, s_above: 1.0}, hi=3.0)
 
     matrix = lil_matrix((len(rows), num_vars))
@@ -256,18 +257,75 @@ def _analytical_refine(case: FloorplanCase, layout: Layout, config: dict, seed: 
     overlap_weight = float(config.get("density_weight", 5000.0))
     outline_weight = float(config.get("outline_weight", 20000.0))
     wl_weight = float(config.get("wl_weight", 1.0))
+    thermal_weight = float(config.get("thermal_weight", 0.0))
 
     widths_t = torch.tensor(widths, dtype=torch.float64)
     heights_t = torch.tensor(heights, dtype=torch.float64)
     net_tensors = _net_tensors(case, ids, rotations)
 
+    # --- Thermal setup (load model once before loop) ---
+    thermal_state = None
+    grid_x_t = grid_y_t = powers_t = None
+    thermal_sharpness = 0.0
+    if thermal_weight > 0.0:
+        from thermopt.thermal.grad_thermal import load_thermal_model_for_grad
+        from thermopt.thermal.surrogate_input import coordinate_grid, SURROGATE_NATIVE_GRID_SIZE
+
+        # thermal_model_path: *.pt file (UFNO/FNO) or directory (ScOT/ThermFM-L)
+        model_path = config.get(
+            "thermal_model_path",
+            config.get(
+                "thermfm_model_dir",   # backward compat
+                str(
+                    (
+                        __import__("pathlib").Path(__file__).parent.parent
+                        / "thermal"
+                        / "ufno_demo"
+                        / "model.pt"
+                    ).resolve()
+                ),
+            ),
+        )
+        thermal_state = load_thermal_model_for_grad(model_path)
+
+        grid_x_np, grid_y_np = coordinate_grid(case, SURROGATE_NATIVE_GRID_SIZE)
+        grid_x_t = torch.tensor(grid_x_np, dtype=torch.float32)
+        grid_y_t = torch.tensor(grid_y_np, dtype=torch.float32)
+        powers_np = np.array(
+            [case.chiplet_by_id[cid].power for cid in ids], dtype=np.float32
+        )
+        powers_t = torch.tensor(powers_np, dtype=torch.float32)
+        # sharpness: transition zone ≈ 8 pixels wide so float32 doesn't saturate
+        pixel_size = min(case.outline_width, case.outline_height) / SURROGATE_NATIVE_GRID_SIZE[0]
+        thermal_sharpness = float(config.get("thermal_sharpness", 0.5 / pixel_size))
+        thermal_mode = str(config.get("thermal_mode", "tmax"))
+        thermal_topk = int(config.get("thermal_topk", 50))
+
+    # WL budget: soft penalty when WL exceeds initial * wl_budget_factor
+    wl_budget_factor = float(config.get("wl_budget_factor", 0.0))
+    wl_budget_weight = float(config.get("wl_budget_weight", 1e5))
+    with torch.no_grad():
+        wl_budget = _smooth_hpwl_torch(xy, net_tensors).item() * wl_budget_factor if wl_budget_factor > 0 else None
+
     best_layout = layout
     best_score = _legal_hpwl_score(case, layout)
     for _ in range(steps):
         optimizer.zero_grad()
-        loss = wl_weight * _smooth_hpwl_torch(xy, net_tensors)
+        wl_loss = _smooth_hpwl_torch(xy, net_tensors)
+        loss = wl_weight * wl_loss
+        if wl_budget is not None:
+            loss = loss + wl_budget_weight * torch.relu(wl_loss - wl_budget).square()
         loss = loss + outline_weight * _outline_torch(xy, widths_t, heights_t, case.outline_width, case.outline_height)
         loss = loss + overlap_weight * _overlap_torch(xy, widths_t, heights_t)
+        if thermal_state is not None:
+            from thermopt.thermal.grad_thermal import ufno_thermal_loss
+            t_loss = ufno_thermal_loss(
+                xy, widths_t.float(), heights_t.float(),
+                powers_t, grid_x_t, grid_y_t,
+                thermal_state, thermal_sharpness,
+                mode=thermal_mode, topk=thermal_topk,
+            )
+            loss = loss + thermal_weight * t_loss.double().cpu()
         loss.backward()
         optimizer.step()
 

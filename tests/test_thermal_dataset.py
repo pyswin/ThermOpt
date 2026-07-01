@@ -145,3 +145,68 @@ def test_generate_dataset_with_heuristic_backend_records_runtime(tmp_path: Path)
     assert summary_payload["thermal_backend"]["runtime_mode"] == "heuristic"
     assert sample_payload["thermal_backend"]["runtime_mode"] == "heuristic"
     assert sample_payload["temperature_stats"]["max"] > 25.0
+
+
+def test_pointwise_feature_augmentation_adds_geometry_channels(tmp_path: Path) -> None:
+    from thermopt.data.pointwise_features import augment_pointwise_sample
+
+    pointwise = tmp_path / "sample_000000.csv"
+    pointwise.write_text(
+        "\n".join(
+            [
+                "grid_x,grid_y,chiplet_id,chiplet_power,temperature",
+                "0.0,0.0,A,10.0,30.0",
+                "1.0,0.0,A,10.0,31.0",
+                "0.0,1.0,background,0.0,29.0",
+                "1.0,1.0,background,0.0,28.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    sample_json = tmp_path / "sample_000000.json"
+    sample_json.write_text(
+        json.dumps(
+            {
+                "chiplet_configs": [
+                    {
+                        "name": "A",
+                        "x": 0.0,
+                        "y": 0.0,
+                        "width": 1.0,
+                        "height": 1.0,
+                        "rotation": 0,
+                    }
+                ],
+                "system_config": {
+                    "interposer_width": 2.0,
+                    "interposer_height": 2.0,
+                    "num_grid_x": 2,
+                    "num_grid_y": 2,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    output_csv = tmp_path / "augmented.csv"
+
+    report = augment_pointwise_sample(pointwise, sample_json, output_csv, edge_band_mm=0.75)
+
+    assert output_csv.exists()
+    assert "occupancy_mask" in report["feature_columns"]
+    assert "coord_x_mm" not in report["feature_columns"]
+    assert "coord_y_mm" not in report["feature_columns"]
+    assert "boundary_distance_mm" not in report["feature_columns"]
+    assert "boundary_distance_norm" not in report["feature_columns"]
+    lines = output_csv.read_text(encoding="utf-8").splitlines()
+    header = lines[0].split(",")
+    assert "occupancy_mask" in header
+    assert "edge_mask" in header
+    assert "coord_x_norm" in header
+    assert "coord_y_norm" in header
+    assert "coord_x_mm" not in header
+    assert "coord_y_mm" not in header
+    assert "boundary_distance_mm" not in header
+    assert "boundary_distance_norm" not in header
+    assert lines[1].split(",")[5] == "1"
+    for line in lines[1:]:
+        assert "" not in line.split(",")
