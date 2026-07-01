@@ -1,0 +1,86 @@
+{
+  "wl_m": 53.677218889102896,
+  "milp_time_s": 150.01738357543945,
+  "milp_success": false,
+  "hs_tmax": 120.09707454289736,
+  "hs_t50": 119.82511573967524,
+  "ufno_tmax": 100.6429443359375,
+  "ufno_t50": 100.16485595703125,
+  "err_tmax": -19.45413020695986,
+  "err_t50": -19.66025978264399,
+  "hotspot_time_s": 171.71865105628967,
+  "chiplets": [
+    {
+      "name": "CPU2_0",
+      "x_mm": 18.95,
+      "y_mm": 19.95,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 18.95,
+      "y_mm": 11.9,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_2",
+      "x_mm": 9.9,
+      "y_mm": 19.95,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_3",
+      "x_mm": 3.583091,
+      "y_mm": 29.0,
+      "rotation": 270
+    },
+    {
+      "name": "CPU2_4",
+      "x_mm": 1.85,
+      "y_mm": 1.85,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_5",
+      "x_mm": 9.05,
+      "y_mm": 11.9,
+      "rotation": 90
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 21.683091,
+      "y_mm": 28.0,
+      "rotation": 270
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 28.0,
+      "y_mm": 13.917386,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_2",
+      "x_mm": 12.633091,
+      "y_mm": 28.0,
+      "rotation": 270
+    },
+    {
+      "name": "DRAM_3",
+      "x_mm": 0.85,
+      "y_mm": 19.95,
+      "rotation": 90
+    },
+    {
+      "name": "DRAM_4",
+      "x_mm": 9.9,
+      "y_mm": 0.0,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_5",
+      "x_mm": 0.0,
+      "y_mm": 10.9,
+      "rotation": 90
+    }
+  ]
+}

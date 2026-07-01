@@ -1,0 +1,182 @@
+{
+  "wl_m": 14.651622875730956,
+  "milp_time_s": 150.056250333786,
+  "milp_success": false,
+  "hs_tmax": 61.31554788390235,
+  "hs_t50": 61.16115509525639,
+  "ufno_tmax": 61.091827392578125,
+  "ufno_t50": 60.39446258544922,
+  "err_tmax": -0.22372049132422234,
+  "err_t50": -0.7666925098071715,
+  "hotspot_time_s": 194.6212329864502,
+  "chiplets": [
+    {
+      "name": "CPU1_0",
+      "x_mm": 9.2,
+      "y_mm": 9.5,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_1",
+      "x_mm": 18.950227,
+      "y_mm": 8.5,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_2",
+      "x_mm": 17.9,
+      "y_mm": 12.1,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_3",
+      "x_mm": 16.690455,
+      "y_mm": 14.7,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_4",
+      "x_mm": 15.350227,
+      "y_mm": 19.4,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_5",
+      "x_mm": 14.090455,
+      "y_mm": 15.8,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_6",
+      "x_mm": 4.890455,
+      "y_mm": 16.83,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_7",
+      "x_mm": 6.1,
+      "y_mm": 14.23,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_0",
+      "x_mm": 2.8,
+      "y_mm": 9.13,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 12.8,
+      "y_mm": 9.5,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 0.0,
+      "y_mm": 0.03,
+      "rotation": 90
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 9.850227,
+      "y_mm": 0.4,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_0",
+      "x_mm": 18.950227,
+      "y_mm": 6.335455,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_1",
+      "x_mm": 24.6,
+      "y_mm": 8.5,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_2",
+      "x_mm": 24.6,
+      "y_mm": 13.104546,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_3",
+      "x_mm": 21.5,
+      "y_mm": 17.3,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_4",
+      "x_mm": 26.7,
+      "y_mm": 22.0,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_5",
+      "x_mm": 12.250227,
+      "y_mm": 21.23,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_6",
+      "x_mm": 0.7,
+      "y_mm": 16.83,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_7",
+      "x_mm": 9.7,
+      "y_mm": 12.1,
+      "rotation": 180
+    },
+    {
+      "name": "MEMS_0",
+      "x_mm": 18.950227,
+      "y_mm": 4.235455,
+      "rotation": 90
+    },
+    {
+      "name": "MEMS_1",
+      "x_mm": 26.7,
+      "y_mm": 8.435455,
+      "rotation": 180
+    },
+    {
+      "name": "MEMS_2",
+      "x_mm": 26.7,
+      "y_mm": 13.104545,
+      "rotation": 270
+    },
+    {
+      "name": "MEMS_3",
+      "x_mm": 21.550227,
+      "y_mm": 10.0,
+      "rotation": 90
+    },
+    {
+      "name": "MEMS_4",
+      "x_mm": 28.8,
+      "y_mm": 22.0,
+      "rotation": 270
+    },
+    {
+      "name": "MEMS_5",
+      "x_mm": 15.350227,
+      "y_mm": 22.0,
+      "rotation": 180
+    },
+    {
+      "name": "MEMS_6",
+      "x_mm": 0.0,
+      "y_mm": 19.93,
+      "rotation": 0
+    },
+    {
+      "name": "MEMS_7",
+      "x_mm": 7.9,
+      "y_mm": 10.0,
+      "rotation": 90
+    }
+  ]
+}

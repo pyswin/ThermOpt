@@ -23,3 +23,16 @@ build/
 third_party/
 .vscode/
 src/thermopt/input_sample.npy
+
+# Large model weights - not tracked in git (fetch separately)
+src/thermopt/thermal/thermfm_t/model/*.bin
+src/thermopt/thermal/thermfm_t/model/*.safetensors
+src/thermopt/thermal/ufno_demo/*.pt
+
+src/thermopt/thermal/thermfm_t/model.case_all_bak/
+
+# (broadened) all weight-format files under thermal/ - never tracked
+src/thermopt/thermal/**/*.bin
+src/thermopt/thermal/**/*.pt
+src/thermopt/thermal/**/*.safetensors
+src/thermopt/thermal/**/*.pth

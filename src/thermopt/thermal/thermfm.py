@@ -22,7 +22,7 @@ from thermopt.thermal.surrogate_input import (
 
 
 def _default_demo_root() -> Path:
-    return Path(__file__).with_name("thermfm_t_case_all_demo")
+    return Path(__file__).with_name("thermfm_t")
 
 
 @dataclass
@@ -168,6 +168,7 @@ class ThermFMThermalBackend:
             raise ValueError(f"Therm-FM predictor must return a 2D temperature map, got {temperature.shape}")
         if temperature.shape != self._output_grid_size:
             temperature = resample_grid(temperature, self._output_grid_size).astype(np.float32)
+        temperature = np.ascontiguousarray(temperature.T, dtype=np.float32)  # model ij -> display xy
 
         self._cache[layout_key] = np.array(temperature, copy=True)
         return np.array(temperature, copy=True)

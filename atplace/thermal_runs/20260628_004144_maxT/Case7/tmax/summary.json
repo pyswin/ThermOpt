@@ -1,0 +1,206 @@
+{
+  "case": "Case7",
+  "run": "tmax",
+  "timestamp": "20260628_004144",
+  "thermal_weight": 10000,
+  "thermal_mode": "tmax",
+  "initial": {
+    "thermopt_hpwl_m": 11.867541635478712,
+    "atplace_twl_m": 10.77021,
+    "tmax_c": 62.696807861328125,
+    "tmax50_c": 58.962388305664064
+  },
+  "final": {
+    "wl_m": 11.739574628492129,
+    "tmax_c": 61.380035400390625,
+    "tmax50_c": 58.259945678710935
+  },
+  "delta": {
+    "wl_pct": -1.0782941481664476,
+    "dtmax_c": -1.3167724609375,
+    "dtmax50_c": -0.702442626953129
+  },
+  "runtime_s": 59.10167336463928,
+  "config": {
+    "refine_steps": 300,
+    "learning_rate": 0.05,
+    "density_weight": 5000.0,
+    "outline_weight": 20000.0,
+    "wl_weight": 1.0,
+    "wl_budget_weight": 0.0,
+    "wl_budget_factor": 0.0,
+    "thermal_weight": 10000.0,
+    "thermal_mode": "tmax",
+    "thermfm_model_dir": "/data/xinli/ThermOpt/src/thermopt/thermal/thermfm_t_case_all_demo/model"
+  },
+  "chiplets": [
+    {
+      "name": "CPU1_0",
+      "x_mm": 11.152607,
+      "y_mm": 8.013282,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_1",
+      "x_mm": 13.49682,
+      "y_mm": 10.663111,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_2",
+      "x_mm": 16.989815,
+      "y_mm": 14.316917,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_3",
+      "x_mm": 19.52112,
+      "y_mm": 14.408899,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_4",
+      "x_mm": 17.590325,
+      "y_mm": 18.017483,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_5",
+      "x_mm": 15.021313,
+      "y_mm": 19.39505,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_6",
+      "x_mm": 12.389928,
+      "y_mm": 19.474609,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_7",
+      "x_mm": 9.799515,
+      "y_mm": 10.74883,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_0",
+      "x_mm": 11.759712,
+      "y_mm": 14.380318,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 16.000841,
+      "y_mm": 9.218247,
+      "rotation": 90
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 2.744221,
+      "y_mm": 13.300526,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 21.01046,
+      "y_mm": 5.016022,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_0",
+      "x_mm": 14.806201,
+      "y_mm": 3.788742,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_1",
+      "x_mm": 12.589112,
+      "y_mm": 4.880022,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_2",
+      "x_mm": 16.976937,
+      "y_mm": 6.093838,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_3",
+      "x_mm": 22.146145,
+      "y_mm": 17.05909,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_4",
+      "x_mm": 19.300464,
+      "y_mm": 20.6899,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_5",
+      "x_mm": 15.899757,
+      "y_mm": 23.000394,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_6",
+      "x_mm": 7.799794,
+      "y_mm": 22.917235,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_7",
+      "x_mm": 9.016442,
+      "y_mm": 7.383214,
+      "rotation": 90
+    },
+    {
+      "name": "MEMS_0",
+      "x_mm": 13.149274,
+      "y_mm": 2.707907,
+      "rotation": 90
+    },
+    {
+      "name": "MEMS_1",
+      "x_mm": 14.757705,
+      "y_mm": 6.487461,
+      "rotation": 180
+    },
+    {
+      "name": "MEMS_2",
+      "x_mm": 14.746281,
+      "y_mm": 7.701091,
+      "rotation": 270
+    },
+    {
+      "name": "MEMS_3",
+      "x_mm": 22.357702,
+      "y_mm": 15.669893,
+      "rotation": 180
+    },
+    {
+      "name": "MEMS_4",
+      "x_mm": 21.493631,
+      "y_mm": 20.658367,
+      "rotation": 180
+    },
+    {
+      "name": "MEMS_5",
+      "x_mm": 13.461904,
+      "y_mm": 23.40451,
+      "rotation": 0
+    },
+    {
+      "name": "MEMS_6",
+      "x_mm": 10.949058,
+      "y_mm": 23.76522,
+      "rotation": 180
+    },
+    {
+      "name": "MEMS_7",
+      "x_mm": 6.928407,
+      "y_mm": 9.203798,
+      "rotation": 180
+    }
+  ]
+}

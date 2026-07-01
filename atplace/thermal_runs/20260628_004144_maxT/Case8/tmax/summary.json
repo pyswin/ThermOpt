@@ -1,0 +1,254 @@
+{
+  "case": "Case8",
+  "run": "tmax",
+  "timestamp": "20260628_004144",
+  "thermal_weight": 10000,
+  "thermal_mode": "tmax",
+  "initial": {
+    "thermopt_hpwl_m": 8.506129216990612,
+    "atplace_twl_m": 8.632932,
+    "tmax_c": 61.581695556640625,
+    "tmax50_c": 58.01267578125
+  },
+  "final": {
+    "wl_m": 8.78431406881006,
+    "tmax_c": 61.546234130859375,
+    "tmax50_c": 58.01822265625
+  },
+  "delta": {
+    "wl_pct": 3.270404724910439,
+    "dtmax_c": -0.03546142578125,
+    "dtmax50_c": 0.005546875000000284
+  },
+  "runtime_s": 60.9590117931366,
+  "config": {
+    "refine_steps": 300,
+    "learning_rate": 0.05,
+    "density_weight": 5000.0,
+    "outline_weight": 20000.0,
+    "wl_weight": 1.0,
+    "wl_budget_weight": 0.0,
+    "wl_budget_factor": 0.0,
+    "thermal_weight": 10000.0,
+    "thermal_mode": "tmax",
+    "thermfm_model_dir": "/data/xinli/ThermOpt/src/thermopt/thermal/thermfm_t_case_all_demo/model"
+  },
+  "chiplets": [
+    {
+      "name": "CPU1_0",
+      "x_mm": 17.937324,
+      "y_mm": 15.529706,
+      "rotation": 90
+    },
+    {
+      "name": "CPU1_1",
+      "x_mm": 19.476955,
+      "y_mm": 9.667538,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_2",
+      "x_mm": 21.471835,
+      "y_mm": 14.319144,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_3",
+      "x_mm": 8.949996,
+      "y_mm": 16.209114,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_4",
+      "x_mm": 8.111454,
+      "y_mm": 13.44417,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_5",
+      "x_mm": 5.37039,
+      "y_mm": 16.051042,
+      "rotation": 90
+    },
+    {
+      "name": "CPU1_6",
+      "x_mm": 3.772402,
+      "y_mm": 8.97856,
+      "rotation": 90
+    },
+    {
+      "name": "CPU1_7",
+      "x_mm": 7.306928,
+      "y_mm": 10.495932,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_8",
+      "x_mm": 7.782159,
+      "y_mm": 6.828263,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_9",
+      "x_mm": 16.85732,
+      "y_mm": 9.57651,
+      "rotation": 0
+    },
+    {
+      "name": "CPU1_10",
+      "x_mm": 19.089979,
+      "y_mm": 6.935418,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_11",
+      "x_mm": 18.955175,
+      "y_mm": 4.173243,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_0",
+      "x_mm": 17.425762,
+      "y_mm": 18.082968,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_1",
+      "x_mm": 14.908446,
+      "y_mm": 15.325707,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_2",
+      "x_mm": 21.980202,
+      "y_mm": 10.839335,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_3",
+      "x_mm": 13.837735,
+      "y_mm": 10.873967,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_4",
+      "x_mm": 23.981466,
+      "y_mm": 11.249711,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_5",
+      "x_mm": 23.760462,
+      "y_mm": 16.851912,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_6",
+      "x_mm": 11.816183,
+      "y_mm": 18.681327,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_7",
+      "x_mm": 8.54164,
+      "y_mm": 19.811914,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_8",
+      "x_mm": 11.654225,
+      "y_mm": 12.957451,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_9",
+      "x_mm": 11.624293,
+      "y_mm": 15.295007,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_10",
+      "x_mm": 3.623235,
+      "y_mm": 18.636573,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_11",
+      "x_mm": 3.160554,
+      "y_mm": 15.37018,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_12",
+      "x_mm": 0.726071,
+      "y_mm": 10.517081,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_13",
+      "x_mm": 0.637647,
+      "y_mm": 7.750168,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_14",
+      "x_mm": 10.316055,
+      "y_mm": 8.491688,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_15",
+      "x_mm": 10.816771,
+      "y_mm": 10.629612,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_16",
+      "x_mm": 6.046075,
+      "y_mm": 4.531305,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_17",
+      "x_mm": 10.534749,
+      "y_mm": 6.179751,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_18",
+      "x_mm": 18.259284,
+      "y_mm": 13.270743,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_19",
+      "x_mm": 15.147498,
+      "y_mm": 13.279182,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_20",
+      "x_mm": 22.736976,
+      "y_mm": 6.369857,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_21",
+      "x_mm": 22.825801,
+      "y_mm": 8.457094,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_22",
+      "x_mm": 21.02407,
+      "y_mm": 1.113911,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_23",
+      "x_mm": 22.901985,
+      "y_mm": 4.133231,
+      "rotation": 180
+    }
+  ]
+}

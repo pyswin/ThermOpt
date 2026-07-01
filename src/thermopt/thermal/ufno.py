@@ -109,7 +109,7 @@ class UFNOThermalBackend:
                 raise ValueError(
                     f"U-FNO input must have shape (64, 64, 1, 3), got {input_phys.shape}"
                 )
-            x = torch.from_numpy(input_phys).unsqueeze(0)
+            x = torch.from_numpy(input_phys).unsqueeze(0).to(next(model.parameters()).device)
             with torch.inference_mode():
                 xn = x_normalizer.forward(x)
                 out = model(xn)
@@ -147,6 +147,7 @@ class UFNOThermalBackend:
             raise ValueError(f"U-FNO predictor must return a 2D temperature map, got {temperature.shape}")
         if temperature.shape != self._output_grid_size:
             temperature = resample_grid(temperature, self._output_grid_size).astype(np.float32)
+        temperature = np.ascontiguousarray(temperature.T, dtype=np.float32)  # model ij -> display xy
 
         self._cache[layout_key] = np.array(temperature, copy=True)
         return np.array(temperature, copy=True)

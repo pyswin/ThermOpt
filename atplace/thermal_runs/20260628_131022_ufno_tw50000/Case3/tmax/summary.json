@@ -1,0 +1,86 @@
+{
+  "case": "Case3",
+  "run": "tmax",
+  "timestamp": "20260628_131022",
+  "thermal_weight": 50000,
+  "thermal_mode": "tmax",
+  "initial": {
+    "thermopt_hpwl_m": 34.549089404437055,
+    "atplace_twl_m": 33.5968,
+    "tmax_c": 99.60751342773438,
+    "tmax50_c": 99.01031494140625
+  },
+  "final": {
+    "wl_m": 43.827584675904504,
+    "tmax_c": 97.4075927734375,
+    "tmax50_c": 96.95148468017578
+  },
+  "delta": {
+    "wl_pct": 26.855976326472543,
+    "dtmax_c": -2.199920654296875,
+    "dtmax50_c": -2.0588302612304688
+  },
+  "runtime_s": 182.45685076713562,
+  "config": {
+    "refine_steps": 500,
+    "learning_rate": 0.03,
+    "density_weight": 5000.0,
+    "outline_weight": 20000.0,
+    "wl_weight": 1.0,
+    "wl_budget_weight": 0.0,
+    "wl_budget_factor": 0.0,
+    "thermal_weight": 50000.0,
+    "thermal_mode": "tmax",
+    "thermal_model_path": "/data/xinli/ThermOpt/src/thermopt/thermal/ufno_demo/model.pt"
+  },
+  "chiplets": [
+    {
+      "name": "CPU2_0",
+      "x_mm": 18.616041,
+      "y_mm": 7.400252,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 18.770511,
+      "y_mm": 30.087544,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_2",
+      "x_mm": 14.722462,
+      "y_mm": 20.753043,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_3",
+      "x_mm": 22.541665,
+      "y_mm": 21.08173,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 29.053776,
+      "y_mm": 9.418922,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 9.745295,
+      "y_mm": 30.145066,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_2",
+      "x_mm": 5.428764,
+      "y_mm": 18.859903,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_3",
+      "x_mm": 30.545358,
+      "y_mm": 21.643129,
+      "rotation": 180
+    }
+  ]
+}

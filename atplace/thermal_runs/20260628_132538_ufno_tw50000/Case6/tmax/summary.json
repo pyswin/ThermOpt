@@ -1,0 +1,158 @@
+{
+  "case": "Case6",
+  "run": "tmax",
+  "timestamp": "20260628_132538",
+  "thermal_weight": 50000,
+  "thermal_mode": "tmax",
+  "initial": {
+    "thermopt_hpwl_m": 32.60452154905937,
+    "atplace_twl_m": 31.97503,
+    "tmax_c": 86.05645751953125,
+    "tmax50_c": 85.28634643554688
+  },
+  "final": {
+    "wl_m": 35.70439205441575,
+    "tmax_c": 89.96646118164062,
+    "tmax50_c": 89.60511016845703
+  },
+  "delta": {
+    "wl_pct": 9.507486563457357,
+    "dtmax_c": 3.910003662109375,
+    "dtmax50_c": 4.318763732910156
+  },
+  "runtime_s": 93.74510645866394,
+  "config": {
+    "refine_steps": 800,
+    "learning_rate": 0.03,
+    "density_weight": 5000.0,
+    "outline_weight": 20000.0,
+    "wl_weight": 1.0,
+    "wl_budget_weight": 0.0,
+    "wl_budget_factor": 0.0,
+    "thermal_weight": 50000.0,
+    "thermal_mode": "tmax",
+    "thermal_model_path": "/data/xinli/ThermOpt/src/thermopt/thermal/ufno_demo/model.pt"
+  },
+  "chiplets": [
+    {
+      "name": "CPU2_0",
+      "x_mm": 24.186646,
+      "y_mm": 22.538693,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 24.162003,
+      "y_mm": 28.939202,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_2",
+      "x_mm": 24.02,
+      "y_mm": 34.826341,
+      "rotation": 270
+    },
+    {
+      "name": "CPU2_3",
+      "x_mm": 28.979438,
+      "y_mm": 36.581413,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_4",
+      "x_mm": 33.984786,
+      "y_mm": 35.29285,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_5",
+      "x_mm": 34.702723,
+      "y_mm": 20.565947,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_6",
+      "x_mm": 29.203037,
+      "y_mm": 22.115538,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_7",
+      "x_mm": 29.557999,
+      "y_mm": 27.352275,
+      "rotation": 180
+    },
+    {
+      "name": "GPU_0",
+      "x_mm": 15.010323,
+      "y_mm": 17.934119,
+      "rotation": 0
+    },
+    {
+      "name": "GPU_1",
+      "x_mm": 15.278414,
+      "y_mm": 38.716509,
+      "rotation": 270
+    },
+    {
+      "name": "GPU_2",
+      "x_mm": 40.701826,
+      "y_mm": 35.817779,
+      "rotation": 180
+    },
+    {
+      "name": "GPU_3",
+      "x_mm": 24.456866,
+      "y_mm": 13.246679,
+      "rotation": 0
+    },
+    {
+      "name": "HBM_0",
+      "x_mm": 6.032834,
+      "y_mm": 15.501308,
+      "rotation": 0
+    },
+    {
+      "name": "HBM_1",
+      "x_mm": 6.137399,
+      "y_mm": 40.367078,
+      "rotation": 0
+    },
+    {
+      "name": "HBM_2",
+      "x_mm": 39.012843,
+      "y_mm": 45.076368,
+      "rotation": 270
+    },
+    {
+      "name": "HBM_3",
+      "x_mm": 23.599072,
+      "y_mm": 4.046764,
+      "rotation": 90
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 14.6994,
+      "y_mm": 29.417484,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 28.89238,
+      "y_mm": 42.304497,
+      "rotation": 270
+    },
+    {
+      "name": "DRAM_2",
+      "x_mm": 35.439895,
+      "y_mm": 11.439795,
+      "rotation": 90
+    },
+    {
+      "name": "DRAM_3",
+      "x_mm": 36.687913,
+      "y_mm": 25.650933,
+      "rotation": 180
+    }
+  ]
+}
