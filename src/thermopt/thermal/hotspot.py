@@ -249,9 +249,11 @@ def _layout_extent_m(case: FloorplanCase, layout: Layout) -> tuple[float, float]
     max_y = 0.0
     for chiplet_id in case.chiplet_ids:
         placement = layout.by_id[chiplet_id]
-        _, _, x1, y1 = bounds(case, placement)
-        max_x = max(max_x, _mm_to_m(x1))
-        max_y = max(max_y, _mm_to_m(y1))
+        chiplet = case.chiplet_by_id[chiplet_id]
+        x0, y0 = placement.lower_left(chiplet)
+        width_mm, height_mm = placement.rotated_size(chiplet)
+        max_x = max(max_x, _mm_to_m(x0 + width_mm))
+        max_y = max(max_y, _mm_to_m(y0 + height_mm))
     return max_x, max_y
 
 
@@ -443,7 +445,7 @@ def _write_hotspot_floorplans(workspace: Path, case: FloorplanCase, layout: Layo
         chiplet = chiplets[chiplet_id]
         unit_name = f"Chiplet_{len(chiplet_items_l4)}"
         power_by_unit[unit_name] = float(chiplet.power)
-        x_left, y_bottom, _, _ = bounds(case, placement)
+        x_left, y_bottom = placement.lower_left(chiplet)
         x_left_m = _mm_to_m(x_left)
         y_bottom_m = _mm_to_m(y_bottom)
         width_mm, height_mm = placement.rotated_size(chiplet)

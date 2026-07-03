@@ -126,11 +126,14 @@ class ThermalDatasetGenerator:
         configs: list[dict[str, Any]] = []
         for placement in layout.placements:
             chiplet = chiplets[placement.chiplet_id]
+            cx, cy = placement.center()
             configs.append(
                 {
                     "name": placement.chiplet_id,
-                    "x": float(placement.x),
-                    "y": float(placement.y),
+                    "cx": float(cx),
+                    "cy": float(cy),
+                    "x": float(cx - chiplet.width * 0.5),
+                    "y": float(cy - chiplet.height * 0.5),
                     "width": float(chiplet.width),
                     "height": float(chiplet.height),
                     "base_width": float(chiplet.width),
@@ -147,6 +150,8 @@ class ThermalDatasetGenerator:
         max_y = max(0.0, self.case.outline_height - float(config["height"]))
         config["x"] = float(np.clip(float(config["x"]), 0.0, max_x))
         config["y"] = float(np.clip(float(config["y"]), 0.0, max_y))
+        config["cx"] = float(config["x"]) + float(config["width"]) * 0.5
+        config["cy"] = float(config["y"]) + float(config["height"]) * 0.5
         return config
 
     @staticmethod
@@ -155,12 +160,16 @@ class ThermalDatasetGenerator:
 
     @staticmethod
     def _config_center(config: dict[str, Any]) -> tuple[float, float]:
+        if "cx" in config and "cy" in config:
+            return float(config["cx"]), float(config["cy"])
         return (
             float(config["x"]) + float(config["width"]) * 0.5,
             float(config["y"]) + float(config["height"]) * 0.5,
         )
 
     def _set_config_center(self, config: dict[str, Any], center_x: float, center_y: float) -> dict[str, Any]:
+        config["cx"] = float(center_x)
+        config["cy"] = float(center_y)
         config["x"] = float(center_x) - float(config["width"]) * 0.5
         config["y"] = float(center_y) - float(config["height"]) * 0.5
         return self._clamp_config_position(config)
@@ -591,8 +600,8 @@ class ThermalDatasetGenerator:
         placements = tuple(
             Placement(
                 chiplet_id=str(config["name"]),
-                x=float(config["x"]),
-                y=float(config["y"]),
+                x=float(config.get("cx", float(config["x"]) + float(config["width"]) * 0.5)),
+                y=float(config.get("cy", float(config["y"]) + float(config["height"]) * 0.5)),
                 rotation=int(config.get("rotation", 0)) % 360,
             )
             for config in configs

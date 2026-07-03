@@ -125,7 +125,8 @@ def main(spacing: float = 0.0, time_limit: float = 150.0, cases=None):
 
         # Save layout
         chiplets_out = [{"name": p.chiplet_id, "x_mm": round(p.x, 6),
-                         "y_mm": round(p.y, 6), "rotation": p.rotation}
+                         "y_mm": round(p.y, 6), "cx_mm": round(p.x, 6),
+                         "cy_mm": round(p.y, 6), "rotation": p.rotation}
                         for p in layout.placements]
         results[case_name] = {
             "wl_m": wl_m, "milp_time_s": milp_t, "milp_success": ok,

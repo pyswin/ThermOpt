@@ -239,11 +239,20 @@ Case1/2/4 存在坐标解析偏差，暂不纳入；Case9/10 未测试。
 
 | 量 | 单位 | 备注 |
 |----|------|------|
-| 布局坐标 | mm | 内部表示；layout.json 存储 μm，读取时 ×0.001 |
+| 布局坐标 | mm | **内部优化统一使用中心坐标 (`cx/cy`)；HotSpot 输入和点式数据导出使用左下角坐标 (`x/y`)**。ATPlace `layout.json` 原始坐标是中心坐标，读取时按中心保留，写入 HotSpot 前再转换为左下角。 |
 | 线长（ATPlace） | m | `twl_m = hpwl / 1e6` |
 | 线长（ThermOpt） | m | `thermopt_wl_m = hpwl() / 1e3` |
 | 温度 | °C | HotSpot 输出 Kelvin，减 273.15；ScOT 同 |
 | ScOT 输入网格 | 64×64 | 坐标范围 0 到 `outline_width/height`（mm） |
+
+### 坐标语义
+
+- `Placement.x/y`：内部统一解释为 chiplet **中心坐标**。
+- `chiplet_configs` 中新增的 `cx/cy`：中心坐标，供优化器、后处理和新热预测模型使用。
+- `chiplet_configs` 中保留的 `x/y`：左下角坐标，供 HotSpot `.flp` 写文件和兼容旧处理链路使用。
+- `layout.json` 中的 ATPlace 原始布局：`x/y` 也是中心坐标。
+- 点式数据 `pointwise/*.csv` 只表达网格采样，不表达 chiplet 几何中心；它仍然通过 `chiplet_id` 和 `chiplet_power` 记录该网格点落在哪个器件上。
+- 读取旧数据时，如果没有 `cx/cy`，脚本会回退到由 `x/y + width/2, height/2` 推导中心坐标。
 
 ---
 
@@ -269,3 +278,185 @@ thermal:
 - **Case7/Case8**：初始温度 <65°C，热优化改善幅度有限（<2°C），温度梯度信号弱。
 - **线长代价**：`thermal_weight=10000` 时热目标主导，Case3 等高温 case 线长可能上涨 40% 以上。
 - **模型缓存**：ScOT 通过 `_MODEL_CACHE` 在进程内只加载一次，多 case 连续跑无需重复加载。
+
+## Dataset Generation
+
+Important behavior:
+
+- `--num_samples` means the number of **successful** samples to produce.
+- Failed attempts are retried until the requested number of successful samples is reached.
+- Sample file names are contiguous: `sample_000000`, `sample_000001`, ...
+- `pointwise` CSVs store grid coordinates, a chiplet label for the cell, the associated chiplet power, and the temperature.
+- Grid cells outside any chiplet are labeled as `background` with `chiplet_power=0`.
+- You can post-process existing `pointwise` CSVs to add geometry channels for surrogate training:
+  - `occupancy_mask`: 1 inside any chiplet footprint, 0 otherwise.
+  - `edge_mask`: 1 near chiplet boundaries, 0 otherwise.
+  - `coord_x_norm`, `coord_y_norm`: normalized grid coordinates in `[0, 1]`.
+  - The augmentation script preserves the original pointwise columns and does not write empty values.
+
+### Common Commands
+
+Generate 1000 successful samples with position randomization only:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type random \
+  --no-randomize_power \
+  --no-randomize_rotation
+```
+
+Keep layout fixed, only vary power:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type random \
+  --no-randomize_position \
+  --no-randomize_rotation
+```
+
+Keep layout fixed and generate a stable baseline dataset:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type fixed \
+  --no-randomize_position \
+  --no-randomize_power \
+  --no-randomize_rotation
+```
+
+Generate a monotonic power sweep:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --variation_type grid
+```
+
+Generate with real HotSpot and fail if it is missing or fails:
+
+```bash
+python3 scripts/generate_thermal_dataset.py \
+  --case_dir external/ATPlace_pub/cases/Case1 \
+  --output_dir outputs/thermopt_dataset \
+  --num_samples 1000 \
+  --backend hotspot \
+  --hotspot_required \
+  --no-hotspot_allow_fallback
+```
+
+Augment an existing dataset in place or into a separate directory:
+
+```bash
+python3 scripts/augment_pointwise_features.py \
+  --dataset_dir outputs/thermopt_dataset/case1
+```
+
+Write the augmented CSVs to another directory:
+
+```bash
+python3 scripts/augment_pointwise_features.py \
+  --dataset_dir outputs/thermopt_dataset/case1 \
+  --output_dir outputs/thermopt_dataset/case1_augmented
+```
+
+### Option Reference
+
+| Option | Meaning |
+| --- | --- |
+| `--case_dir` | Input ATPlace-style case directory containing `.blocks`, `.nets`, `.power`, and `.pl`. |
+| `--output_dir` | Output directory for dataset files. |
+| `--num_samples` | Target number of successful samples. The generator retries until this count is reached. |
+| `--variation_type` | `random`, `fixed`, or `grid`. Controls how layouts and powers are generated. |
+| `--save_formats` | Comma-separated output formats: `pointwise`, `gridwise`, `json`. |
+| `--config_name` | Case config file name, usually `reproduce.json`. |
+| `--config_mode` | Case config mode, `thermal` or `wl`. |
+| `--use_case_config` / `--no-use_case_config` | Whether to read extra case settings from the case directory. |
+| `--unit_scale` | Scale factor that converts case units into mm. |
+| `--initial_layout` | Initial layout source, `pl` or `random`. |
+| `--min_gap` | Minimum allowed gap between chiplets, in mm. |
+| `--randomize_position` / `--no-randomize_position` | Enable or disable position randomization. |
+| `--randomize_power` / `--no-randomize_power` | Enable or disable power randomization. |
+| `--randomize_rotation` / `--no-randomize_rotation` | Enable or disable rotation randomization. |
+| `--power_additive_fraction` | Adds absolute power perturbation to improve low-power coverage. |
+| `--power_dropout_prob` | Probability of applying a low-power dropout state. |
+| `--power_sleep_ratio` | Power ratio used for the dropout state. |
+| `--power_shutdown_prob` | Probability of forcing a chiplet to 0 W. |
+| `--min_power_density` / `--max_power_density` | Lower and upper power-density bounds used to clamp random power. |
+| `--tdp_limit` / `--tdp_limit_ratio` | Soft total-power cap for the whole chip. |
+| `--backend` | Thermal backend: Linux `hotspot`, development-only `heuristic`, or reserved `ai`. |
+| `--hotspot_binary` | Path to the Linux HotSpot executable. Defaults to the vendored Linux x86-64 binary. |
+| `--hotspot_required` / `--no-hotspot-required` | Fail if the HotSpot binary is missing. Defaults to required. |
+| `--hotspot_allow_fallback` / `--no-hotspot-allow-fallback` | Deprecated compatibility option. HotSpot failures raise errors; no heuristic fallback is used. |
+| `--grid_size NX NY` | Target thermal grid resolution. |
+| `--ambient` | Ambient temperature, in Celsius. |
+| `--scale` | Power-to-temperature scaling factor used by the thermal backend. |
+| `--sigma_factor` | Reserved thermal configuration parameter. |
+| `--thermal_threshold` | Optional thermal threshold used by HotSpot config generation. |
+| `--work_dir` | Workspace for HotSpot temporary files. |
+| `--seed` | Random seed. |
+
+### Practical Notes
+
+- If you want a dataset for temperature-field training, keep `pointwise` and `json` in `--save_formats`.
+- If you only care about the raster temperature map, `gridwise` is the smallest output.
+- `background` cells in `pointwise` are intentional. They represent grid locations outside any chiplet footprint.
+- Dataset generation always uses HotSpot as the golden thermal backend. Therm-FM and U-FNO are only available on the optimizer path.
+- `grid_size` in the dataset command is the requested output resolution, not the internal HotSpot grid. HotSpot may round its internal grid up and then resample back.
+- For FNO-style surrogate training, `occupancy_mask` and `edge_mask` usually help most with geometry recovery; `coord_x_norm/coord_y_norm` provide the positional cue without introducing extra coordinate scales.
+
+## Objective
+
+The objective combines wirelength and temperature:
+
+```yaml
+objective:
+  alpha: 1.0
+  beta: 1.0
+  gamma: 50.0
+  delta: 80.0
+```
+
+- `beta: 0.0` means wirelength-only optimization.
+- `beta > 0.0` means temperature contributes to the total cost.
+
+## Units And Rotation
+
+- Internal layout units are `mm`.
+- The HotSpot adapter converts to meters internally.
+- Dataset generation uses `0` and `90` degree rotations.
+- SA can use `0`, `90`, `180`, and `270` degree rotations, but `allow_rotate_move` controls whether the optimizer is allowed to use rotation moves.
+
+## Outputs
+
+Generated optimizer results are written under `outputs/`:
+
+- `summary.json`
+- `metrics.csv`
+- `final_summary.png`
+- `final_layout_*.png`
+- `final_temperature_*.png`
+- `cost_curve_*.png`
+
+Dataset outputs are written separately as:
+
+- `pointwise/sample_*.csv`
+- `gridwise/sample_*.csv`
+- `json/sample_*.json`
+- `dataset_summary.json`
+
+## Maintenance Boundary
+
+- To replace the thermal solver later, keep the `ThermalBackend` interface and swap the implementation under `src/thermopt/thermal/`.
+- To replace the optimizer later, keep the `Objective` callback signature and only change the code under `src/thermopt/optimizer/`.
+- To move the dataset generator later, keep the ATPlace-style case loader and preserve the output schema in `pointwise/`, `gridwise/`, and `json/`.
