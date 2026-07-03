@@ -10,11 +10,11 @@
 ThermOpt/
 ├── src/thermopt/
 │   ├── optimizer/
-│   │   ├── atplace.py                # ATPlace 三阶段优化器：MILP clump 初始化 → 梯度精修（含热损失/WL 软约束）→ sequence-pair 合法化+扰动
-│   │   ├── atmplace.py               # atplace 的多起点变体（多个 atplace 阶段结果里选最优）
-│   │   ├── milp_wl.py                # Phase-1 MILP 初始化（scipy/HiGHS）+ WL-MILP 优化器；build_init_problem() 是与 milp_wl_gurobi 共用的建模逻辑
-│   │   ├── milp_wl_gurobi.py         # milp_wl 的 Gurobi 求解后端：用 MIPSOL/MIP 回调，在单次求解过程中每隔~1秒记录一次中间解位置（scipy/HiGHS 无此回调接口）
-│   │   ├── perturb.py                # 位置扰动算子：swap / move_small / move_more / rotate（仅矩形），按功率加权选芯粒，扰动后用 sequence-pair 合法化
+│   │   ├── atplace.py                # ATPlace 三阶段优化器：MILP 初始化 → 梯度精修 → sequence-pair 合法化+扰动
+│   │   ├── atmplace.py               # atplace 的多起点变体
+│   │   ├── milp_wl.py                # Phase-1 MILP 初始化（scipy/HiGHS）+ WL-MILP 优化器
+│   │   ├── milp_wl_gurobi.py         # milp_wl 的 Gurobi 后端：MIPSOL/MIP 回调每秒记录一次中间解位置
+│   │   ├── perturb.py                # 位置扰动算子：swap/move_small/move_more/rotate，扰动后 sequence-pair 合法化
 │   │   ├── sequence_pair.py          # Sequence-pair 编解码 + 对应的 SA 优化器
 │   │   ├── simulated_annealing.py    # 通用模拟退火优化器（translate/swap/rotate/perturb 四种走子）
 │   │   ├── genetic_algorithm.py      # 遗传算法优化器（复用 simulated_annealing 的走子算子）
@@ -168,8 +168,8 @@ python3 scripts/hotspot_validate.py
 
 两阶段流程，只产生位置数据，**不跑热仿真**：
 
-1. **intermediate（中间快照）**：用 Gurobi 求解 Phase-1 MILP 初始化（100s 时限），通过 `MIPSOL`/`MIP` 回调在求解过程中每隔约 1 秒记录一次当前最优解的芯粒位置（scipy/HiGHS 没有暴露增量解回调，做不到这一点，这也是加 `milp_wl_gurobi.py` 这个后端的原因）。
-2. **perturb（位置扰动）**：先把连续重复的快照去重（求解器长时间没找到更优解时，同一位置会被重复记录），在真正不同的状态里均匀选 5 个种子点；每个种子点做 swap / move_small（≤n/6 个芯粒）/ move_more（≤n/2 个芯粒）/ rotate（仅矩形芯粒）扰动，按功率加权选择被扰动的芯粒，移动距离不超过外框短边的 12%，扰动后统一用 sequence-pair 重新合法化。Case1-5 各生成 1000 条，Case6-8（芯粒数更多、更难收敛）各生成 1500 条。
+1. **intermediate（中间快照）**：Gurobi 求解 Phase-1 MILP（100s 时限），用 `MIPSOL`/`MIP` 回调每隔约 1 秒记录一次当前最优解位置（scipy/HiGHS 无此回调，故加 `milp_wl_gurobi.py` 后端）。
+2. **perturb（位置扰动）**：快照去重后均匀选 5 个种子点，各做 swap / move_small（≤n/6 芯粒）/ move_more（≤n/2 芯粒）/ rotate（仅矩形）扰动（按功率加权选芯粒，移动距离≤外框短边 12%），扰动后用 sequence-pair 重新合法化。Case1-5 各 1000 条，Case6-8 各 1500 条。
 
 输出到 `atplace/milp_wl_dataset/{timestamp}/`：
 
