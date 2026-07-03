@@ -1,0 +1,133 @@
+{
+  "config": {
+    "milp_time_limit": 100.0,
+    "mip_rel_gap": 0.001,
+    "snapshot_interval": 1.0,
+    "seed": 42,
+    "verbose": false
+  },
+  "n_seeds": 5,
+  "cases": {
+    "Case1": {
+      "n_chiplets": 6,
+      "milp_solver_success": true,
+      "milp_solver_objective": 9571.201387199853,
+      "milp_solve_time_s": 0.13660907745361328,
+      "n_snapshots": 2,
+      "n_perturb_samples": 1000,
+      "n_perturb_legal": 914,
+      "seed_snapshot_indices": [
+        0,
+        1
+      ]
+    },
+    "Case2": {
+      "n_chiplets": 6,
+      "milp_solver_success": true,
+      "milp_solver_objective": 12081.119693120027,
+      "milp_solve_time_s": 0.12382984161376953,
+      "n_snapshots": 2,
+      "n_perturb_samples": 1000,
+      "n_perturb_legal": 991,
+      "seed_snapshot_indices": [
+        0,
+        1
+      ]
+    },
+    "Case3": {
+      "n_chiplets": 8,
+      "milp_solver_success": true,
+      "milp_solver_objective": 14287.810245599801,
+      "milp_solve_time_s": 0.45425868034362793,
+      "n_snapshots": 2,
+      "n_perturb_samples": 1000,
+      "n_perturb_legal": 991,
+      "seed_snapshot_indices": [
+        0,
+        1
+      ]
+    },
+    "Case4": {
+      "n_chiplets": 11,
+      "milp_solver_success": true,
+      "milp_solver_objective": 37220.61104479971,
+      "milp_solve_time_s": 5.6977550983428955,
+      "n_snapshots": 7,
+      "n_perturb_samples": 1000,
+      "n_perturb_legal": 847,
+      "seed_snapshot_indices": [
+        0,
+        2,
+        3,
+        4,
+        6
+      ]
+    },
+    "Case5": {
+      "n_chiplets": 12,
+      "milp_solver_success": false,
+      "milp_solver_objective": 37644.52823952981,
+      "milp_solve_time_s": 104.24944925308228,
+      "n_snapshots": 99,
+      "n_perturb_samples": 1000,
+      "n_perturb_legal": 951,
+      "seed_snapshot_indices": [
+        0,
+        2,
+        22,
+        61,
+        85
+      ]
+    },
+    "Case6": {
+      "n_chiplets": 20,
+      "milp_solver_success": false,
+      "milp_solver_objective": 18262.16047519983,
+      "milp_solve_time_s": 100.46293330192566,
+      "n_snapshots": 88,
+      "n_perturb_samples": 1500,
+      "n_perturb_legal": 1352,
+      "seed_snapshot_indices": [
+        0,
+        5,
+        11,
+        27,
+        75
+      ]
+    },
+    "Case7": {
+      "n_chiplets": 28,
+      "milp_solver_success": false,
+      "milp_solver_objective": 8142.539803460151,
+      "milp_solve_time_s": 100.47086238861084,
+      "n_snapshots": 86,
+      "n_perturb_samples": 1500,
+      "n_perturb_legal": 1003,
+      "seed_snapshot_indices": [
+        0,
+        10,
+        21,
+        31,
+        48
+      ]
+    },
+    "Case8": {
+      "n_chiplets": 36,
+      "milp_solver_success": false,
+      "milp_solver_objective": 6292.939811099981,
+      "milp_solve_time_s": 100.19397950172424,
+      "n_snapshots": 72,
+      "n_perturb_samples": 1500,
+      "n_perturb_legal": 1257,
+      "seed_snapshot_indices": [
+        0,
+        10,
+        20,
+        49,
+        64
+      ]
+    }
+  },
+  "total_time_s": 6658.345113039017,
+  "note": "perturb/ regenerated after switching seed selection to dedup-aware sampling (see run log); intermediate/ snapshots unchanged."
+}

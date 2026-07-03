@@ -1,0 +1,150 @@
+[
+  {
+    "index": 0,
+    "t": 0.0034160614013671875,
+    "overlap": 0.0,
+    "outline": 3.1899769723993165e-29,
+    "chiplets": [
+      {
+        "name": "HBM_0",
+        "x_mm": 39.4,
+        "y_mm": 17.5,
+        "cx_mm": 43.4,
+        "cy_mm": 23.5,
+        "width_mm": 8.0,
+        "height_mm": 12.0,
+        "rotation": 0,
+        "power": 25.0
+      },
+      {
+        "name": "HBM_1",
+        "x_mm": 6.462614,
+        "y_mm": 29.5,
+        "cx_mm": 10.462614,
+        "cy_mm": 35.5,
+        "width_mm": 8.0,
+        "height_mm": 12.0,
+        "rotation": 0,
+        "power": 25.0
+      },
+      {
+        "name": "HBM_2",
+        "x_mm": 31.4,
+        "y_mm": -0.0,
+        "cx_mm": 35.4,
+        "cy_mm": 6.0,
+        "width_mm": 8.0,
+        "height_mm": 12.0,
+        "rotation": 0,
+        "power": 25.0
+      },
+      {
+        "name": "HBM_3",
+        "x_mm": 39.4,
+        "y_mm": 29.5,
+        "cx_mm": 43.4,
+        "cy_mm": 35.5,
+        "width_mm": 8.0,
+        "height_mm": 12.0,
+        "rotation": 0,
+        "power": 25.0
+      },
+      {
+        "name": "Virtuvian_0",
+        "x_mm": -0.0,
+        "y_mm": 3.0,
+        "cx_mm": 15.7,
+        "cy_mm": 10.25,
+        "width_mm": 31.4,
+        "height_mm": 14.5,
+        "rotation": 0,
+        "power": 256.0
+      },
+      {
+        "name": "Nimbus_0",
+        "x_mm": 31.4,
+        "y_mm": 41.5,
+        "cx_mm": 39.4,
+        "cy_mm": 46.75,
+        "width_mm": 16.0,
+        "height_mm": 10.5,
+        "rotation": 90,
+        "power": 14.0
+      }
+    ]
+  },
+  {
+    "index": 1,
+    "t": 0.11612296104431152,
+    "overlap": 2.557050945230183e-17,
+    "outline": 0.0,
+    "chiplets": [
+      {
+        "name": "HBM_0",
+        "x_mm": 18.826909,
+        "y_mm": 5.5,
+        "cx_mm": 24.826909,
+        "cy_mm": 9.5,
+        "width_mm": 12.0,
+        "height_mm": 8.0,
+        "rotation": 90,
+        "power": 25.0
+      },
+      {
+        "name": "HBM_1",
+        "x_mm": 21.546909,
+        "y_mm": 13.5,
+        "cx_mm": 27.546909,
+        "cy_mm": 17.5,
+        "width_mm": 12.0,
+        "height_mm": 8.0,
+        "rotation": 90,
+        "power": 25.0
+      },
+      {
+        "name": "HBM_2",
+        "x_mm": 21.573091,
+        "y_mm": 36.0,
+        "cx_mm": 27.573091,
+        "cy_mm": 40.0,
+        "width_mm": 12.0,
+        "height_mm": 8.0,
+        "rotation": 270,
+        "power": 25.0
+      },
+      {
+        "name": "HBM_3",
+        "x_mm": 18.853091,
+        "y_mm": 44.0,
+        "cx_mm": 24.853091,
+        "cy_mm": 48.0,
+        "width_mm": 12.0,
+        "height_mm": 8.0,
+        "rotation": 270,
+        "power": 25.0
+      },
+      {
+        "name": "Virtuvian_0",
+        "x_mm": 10.5,
+        "y_mm": 21.5,
+        "cx_mm": 26.2,
+        "cy_mm": 28.75,
+        "width_mm": 31.4,
+        "height_mm": 14.5,
+        "rotation": 180,
+        "power": 256.0
+      },
+      {
+        "name": "Nimbus_0",
+        "x_mm": 0.0,
+        "y_mm": 20.763091,
+        "cx_mm": 5.25,
+        "cy_mm": 28.763091,
+        "width_mm": 10.5,
+        "height_mm": 16.0,
+        "rotation": 0,
+        "power": 14.0
+      }
+    ]
+  }
+]

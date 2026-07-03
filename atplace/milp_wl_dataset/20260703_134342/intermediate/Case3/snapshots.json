@@ -1,0 +1,194 @@
+[
+  {
+    "index": 0,
+    "t": 0.003988981246948242,
+    "overlap": 0.0,
+    "outline": 0.0,
+    "chiplets": [
+      {
+        "name": "CPU2_0",
+        "x_mm": 3.0,
+        "y_mm": 22.0,
+        "cx_mm": 7.5,
+        "cy_mm": 26.0,
+        "width_mm": 9.0,
+        "height_mm": 8.0,
+        "rotation": 90,
+        "power": 150.0
+      },
+      {
+        "name": "CPU2_1",
+        "x_mm": 12.0,
+        "y_mm": 22.0,
+        "cx_mm": 16.5,
+        "cy_mm": 26.0,
+        "width_mm": 9.0,
+        "height_mm": 8.0,
+        "rotation": 90,
+        "power": 150.0
+      },
+      {
+        "name": "CPU2_2",
+        "x_mm": 21.0,
+        "y_mm": 13.0,
+        "cx_mm": 25.5,
+        "cy_mm": 17.0,
+        "width_mm": 9.0,
+        "height_mm": 8.0,
+        "rotation": 90,
+        "power": 150.0
+      },
+      {
+        "name": "CPU2_3",
+        "x_mm": 30.0,
+        "y_mm": 13.0,
+        "cx_mm": 34.5,
+        "cy_mm": 17.0,
+        "width_mm": 9.0,
+        "height_mm": 8.0,
+        "rotation": 90,
+        "power": 150.0
+      },
+      {
+        "name": "DRAM_0",
+        "x_mm": 30.0,
+        "y_mm": 21.0,
+        "cx_mm": 34.5,
+        "cy_mm": 25.5,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 90,
+        "power": 20.0
+      },
+      {
+        "name": "DRAM_1",
+        "x_mm": 30.0,
+        "y_mm": 30.0,
+        "cx_mm": 34.5,
+        "cy_mm": 34.5,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 90,
+        "power": 20.0
+      },
+      {
+        "name": "DRAM_2",
+        "x_mm": 30.0,
+        "y_mm": 4.0,
+        "cx_mm": 34.5,
+        "cy_mm": 8.5,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 90,
+        "power": 20.0
+      },
+      {
+        "name": "DRAM_3",
+        "x_mm": 21.0,
+        "y_mm": 4.0,
+        "cx_mm": 25.5,
+        "cy_mm": 8.5,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 90,
+        "power": 20.0
+      }
+    ]
+  },
+  {
+    "index": 1,
+    "t": 0.4354369640350342,
+    "overlap": 0.0,
+    "outline": 0.0,
+    "chiplets": [
+      {
+        "name": "CPU2_0",
+        "x_mm": 17.254772,
+        "y_mm": 17.0,
+        "cx_mm": 21.754772,
+        "cy_mm": 21.0,
+        "width_mm": 9.0,
+        "height_mm": 8.0,
+        "rotation": 90,
+        "power": 150.0
+      },
+      {
+        "name": "CPU2_1",
+        "x_mm": 8.486909,
+        "y_mm": 9.0,
+        "cx_mm": 12.986909,
+        "cy_mm": 13.0,
+        "width_mm": 9.0,
+        "height_mm": 8.0,
+        "rotation": 270,
+        "power": 150.0
+      },
+      {
+        "name": "CPU2_2",
+        "x_mm": 17.486909,
+        "y_mm": 8.0,
+        "cx_mm": 21.486909,
+        "cy_mm": 12.5,
+        "width_mm": 8.0,
+        "height_mm": 9.0,
+        "rotation": 0,
+        "power": 150.0
+      },
+      {
+        "name": "CPU2_3",
+        "x_mm": 9.0,
+        "y_mm": 17.0,
+        "cx_mm": 13.0,
+        "cy_mm": 21.5,
+        "width_mm": 8.0,
+        "height_mm": 9.0,
+        "rotation": 180,
+        "power": 150.0
+      },
+      {
+        "name": "DRAM_0",
+        "x_mm": 17.267863,
+        "y_mm": 25.0,
+        "cx_mm": 21.767863,
+        "cy_mm": 29.5,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 270,
+        "power": 20.0
+      },
+      {
+        "name": "DRAM_1",
+        "x_mm": 8.473818,
+        "y_mm": 0.0,
+        "cx_mm": 12.973818,
+        "cy_mm": 4.5,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 90,
+        "power": 20.0
+      },
+      {
+        "name": "DRAM_2",
+        "x_mm": 25.486909,
+        "y_mm": 7.986909,
+        "cx_mm": 29.986909,
+        "cy_mm": 12.486909,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 180,
+        "power": 20.0
+      },
+      {
+        "name": "DRAM_3",
+        "x_mm": 0.0,
+        "y_mm": 17.013091,
+        "cx_mm": 4.5,
+        "cy_mm": 21.513091,
+        "width_mm": 9.0,
+        "height_mm": 9.0,
+        "rotation": 0,
+        "power": 20.0
+      }
+    ]
+  }
+]
