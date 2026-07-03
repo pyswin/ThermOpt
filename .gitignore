@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 outputs/*
 !outputs/.gitkeep
+atplace/milp_wl_dataset/*
 external/**/.git/
 external/**/__pycache__/
 external/**/results/

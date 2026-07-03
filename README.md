@@ -171,7 +171,7 @@ python3 scripts/hotspot_validate.py
 1. **intermediate（中间快照）**：Gurobi 求解 Phase-1 MILP（100s 时限），用 `MIPSOL`/`MIP` 回调每隔约 1 秒记录一次当前最优解位置（scipy/HiGHS 无此回调，故加 `milp_wl_gurobi.py` 后端）。
 2. **perturb（位置扰动）**：快照去重后均匀选 5 个种子点，各做 swap / move_small（≤n/6 芯粒）/ move_more（≤n/2 芯粒）/ rotate（仅矩形）扰动（按功率加权选芯粒，移动距离≤外框短边 12%），扰动后用 sequence-pair 重新合法化。Case1-5 各 1000 条，Case6-8 各 1500 条。
 
-输出到 `atplace/milp_wl_dataset/{timestamp}/`：
+输出到 `atplace/milp_wl_dataset/{timestamp}/`（体积较大，已 gitignore，不进仓库，需要本地重新跑）：
 
 ```
 {timestamp}/
