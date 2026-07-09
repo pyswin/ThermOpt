@@ -2,7 +2,7 @@
 独立热仿真测试脚本 — 与梯度/优化无关。
 
 对指定 case 的 MILP 初始布局（或自定义布局）做热预测，支持多后端对照：
-  ufno / ufno_demo / thermfm / thermfm_t （统一走 thermopt.thermal.backend.build_thermal_backend）
+  ufno / ufno_demo / saufno / thermfm / thermfm_t （统一走 thermopt.thermal.backend.build_thermal_backend）
 可选 --hotspot 追加 HotSpot 真值仿真列；可选 --plot 保存温度图 / 误差图 / 多后端对比图。
 
 单位约定（统一）:
@@ -19,6 +19,9 @@
     # 多后端 + HotSpot + 出图
     python3 scripts/test_thermal.py --cases Case3 --backends ufno thermfm --hotspot --plot
     python3 scripts/test_thermal.py --cases Case3 Case5 Case6 Case7 --backends ufno thermfm --hotspot --plot
+
+    python3 scripts/test_thermal.py --cases Case3 Case6 Case7 \
+    --backends ufno thermfm --hotspot --plot
 """
 import argparse
 import json
@@ -45,7 +48,7 @@ HOTSPOT_BIN = ROOT / "external/ATPlace_pub/thermal/hotspot"
 OUTPUT_DIR  = ROOT / "atplace/thermal_test_outputs"
 SCALE = 0.001  # layout.json 存 μm → mm
 
-AI_BACKENDS = {"ufno", "ufno_demo", "thermfm", "thermfm_t"}
+AI_BACKENDS = {"ufno", "ufno_demo", "saufno", "sau_fno", "saufno_demo", "thermfm", "thermfm_t"}
 
 
 def plot_compare_multi(cases_data, out_path):
