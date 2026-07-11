@@ -9,14 +9,23 @@ from thermopt.layout.geometry import bounds
 from thermopt.layout.objects import FloorplanCase, Layout
 
 
-def draw_layout(ax: plt.Axes, case: FloorplanCase, layout: Layout, title: str) -> None:
+def _layout_bounds(case: FloorplanCase, placement, *, center_based: bool) -> tuple[float, float, float, float]:
+    chiplet = case.chiplet_by_id[placement.chiplet_id]
+    if center_based:
+        x0, y0 = placement.lower_left(chiplet)
+        width, height = placement.rotated_size(chiplet)
+        return x0, y0, x0 + width, y0 + height
+    return bounds(case, placement)
+
+
+def draw_layout(ax: plt.Axes, case: FloorplanCase, layout: Layout, title: str, *, center_based: bool = False) -> None:
     chiplets = case.chiplet_by_id
     powers = [chiplets[p.chiplet_id].power for p in layout.placements]
     pmin, pmax = min(powers), max(powers)
     cmap = plt.get_cmap("inferno")
     for placement in layout.placements:
         chiplet = chiplets[placement.chiplet_id]
-        x0, y0, x1, y1 = bounds(case, placement)
+        x0, y0, x1, y1 = _layout_bounds(case, placement, center_based=center_based)
         frac = (chiplet.power - pmin) / max(pmax - pmin, 1e-9)
         rect = plt.Rectangle((x0, y0), x1 - x0, y1 - y0, facecolor=cmap(frac), edgecolor="white", lw=1.0)
         ax.add_patch(rect)
@@ -29,7 +38,7 @@ def draw_layout(ax: plt.Axes, case: FloorplanCase, layout: Layout, title: str) -
     ax.set_ylabel("y")
 
 
-def draw_layout_light(ax: plt.Axes, case: FloorplanCase, layout: Layout) -> None:
+def draw_layout_light(ax: plt.Axes, case: FloorplanCase, layout: Layout, *, center_based: bool = False) -> None:
     """Cheap variant of draw_layout for small-multiple grids: no text labels, thin
     edges, no axis ticks. Colored by power like draw_layout."""
     chiplets = case.chiplet_by_id
@@ -38,7 +47,7 @@ def draw_layout_light(ax: plt.Axes, case: FloorplanCase, layout: Layout) -> None
     cmap = plt.get_cmap("inferno")
     for placement in layout.placements:
         chiplet = chiplets[placement.chiplet_id]
-        x0, y0, x1, y1 = bounds(case, placement)
+        x0, y0, x1, y1 = _layout_bounds(case, placement, center_based=center_based)
         frac = (chiplet.power - pmin) / max(pmax - pmin, 1e-9)
         rect = plt.Rectangle((x0, y0), x1 - x0, y1 - y0, facecolor=cmap(frac), edgecolor="white", lw=0.3)
         ax.add_patch(rect)
@@ -49,10 +58,10 @@ def draw_layout_light(ax: plt.Axes, case: FloorplanCase, layout: Layout) -> None
     ax.set_yticks([])
 
 
-def save_layout_figure(case: FloorplanCase, layout: Layout, path: Path, title: str) -> None:
+def save_layout_figure(case: FloorplanCase, layout: Layout, path: Path, title: str, *, center_based: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 6))
-    draw_layout(ax, case, layout, title)
+    draw_layout(ax, case, layout, title, center_based=center_based)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)

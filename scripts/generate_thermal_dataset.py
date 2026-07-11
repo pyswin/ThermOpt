@@ -18,7 +18,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output_dir", type=Path, required=True, help="Output directory")
     parser.add_argument("--num_samples", type=int, default=10, help="Number of samples to generate")
     parser.add_argument("--variation_type", type=str, default="random", choices=["fixed", "random", "grid"])
-    parser.add_argument("--save_formats", type=str, default="pointwise,json", help="Comma-separated list: pointwise, gridwise, json")
+    parser.add_argument(
+        "--layout_mode",
+        type=str,
+        default="random",
+        choices=["random", "cluster", "boundary", "dispersed"],
+        help="Layout topology used when variation_type=random",
+    )
+    parser.add_argument(
+        "--save_formats",
+        type=str,
+        default="pointwise,json",
+        help="Comma-separated list: pointwise, pointwise_augmented, gridwise, json",
+    )
+    parser.add_argument("--dry_run", action=argparse.BooleanOptionalAction, default=False, help="Validate layouts without writing dataset files")
+    parser.add_argument(
+        "--dry_run_modes",
+        type=str,
+        default="random,cluster,boundary,dispersed",
+        help="Comma-separated topology modes for dry-run validation",
+    )
+    parser.add_argument("--dry_run_samples", type=int, default=1, help="Number of validation samples per mode")
 
     parser.add_argument("--config_name", type=str, default="reproduce.json")
     parser.add_argument("--config_mode", type=str, default="thermal", choices=["wl", "thermal"])
@@ -78,6 +98,7 @@ def main() -> None:
         use_case_config=args.use_case_config,
         unit_scale=args.unit_scale,
         initial_layout=args.initial_layout,
+        layout_mode=args.layout_mode,
         min_gap=args.min_gap,
         randomize_position=args.randomize_position,
         randomize_power=args.randomize_power,
@@ -95,6 +116,16 @@ def main() -> None:
     )
 
     save_formats = [item.strip() for item in args.save_formats.split(",") if item.strip()]
+    if args.dry_run:
+        modes = [item.strip() for item in args.dry_run_modes.split(",") if item.strip()]
+        report = generator.dry_run_generation(
+            num_samples=args.dry_run_samples,
+            variation_type=args.variation_type,
+            layout_modes=modes,
+        )
+        print(report)
+        return
+
     output_dir = generator.generate_dataset(
         num_samples=args.num_samples,
         output_dir=args.output_dir,
