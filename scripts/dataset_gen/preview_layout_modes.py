@@ -12,7 +12,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-SRC_DIR = Path(__file__).resolve().parent.parent / "src"
+SRC_DIR = Path(__file__).resolve().parent.parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
@@ -115,8 +115,8 @@ def _save_mode_montage(case, layouts, out_path: Path, mode: str) -> None:
 
 def main() -> int:
     args = build_parser().parse_args()
-    case_dir = args.case_dir if args.case_dir.is_absolute() else (Path(__file__).resolve().parent.parent / args.case_dir)
-    out_dir = args.out_dir if args.out_dir.is_absolute() else (Path(__file__).resolve().parent.parent / args.out_dir)
+    case_dir = args.case_dir if args.case_dir.is_absolute() else (Path(__file__).resolve().parent.parent.parent / args.case_dir)
+    out_dir = args.out_dir if args.out_dir.is_absolute() else (Path(__file__).resolve().parent.parent.parent / args.out_dir)
     modes = [item.strip() for item in args.layout_modes.split(",") if item.strip()]
     if not modes:
         raise ValueError("no layout modes provided")

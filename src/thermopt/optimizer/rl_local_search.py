@@ -81,8 +81,8 @@ def _sample_move(
         dx, dy = float(rng.normal(0, scale)), float(rng.normal(0, scale))
         w, h = p.rotated_size(chiplet)
         margin = max(case.outline_width, case.outline_height) * 0.1
-        x = float(np.clip(p.x + dx, -margin, case.outline_width - w + margin))
-        y = float(np.clip(p.y + dy, -margin, case.outline_height - h + margin))
+        x = float(np.clip(p.x + dx, w * 0.5 - margin, case.outline_width - w * 0.5 + margin))
+        y = float(np.clip(p.y + dy, h * 0.5 - margin, case.outline_height - h * 0.5 + margin))
         placements[idx] = p.moved(x=x, y=y)
         affected = {p.chiplet_id}
 

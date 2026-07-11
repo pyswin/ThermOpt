@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CASE_ROOT="${ROOT_DIR}/external/ATPlace_pub/cases"
 OUTPUT_ROOT="${ROOT_DIR}/outputs/thermopt_hotspot_smoke_10"
 
@@ -31,7 +31,7 @@ for case_id in "${CASES[@]}"; do
   seed=$((SEED_BASE + case_id * 1000))
 
   echo "[info] generating Case${case_id} -> ${out_dir}"
-  python3 "${ROOT_DIR}/scripts/generate_thermal_dataset.py" \
+  python3 "${ROOT_DIR}/scripts/dataset_gen/generate_thermal_dataset.py" \
     --case_dir "${case_dir}" \
     --output_dir "${out_dir}" \
     --num_samples "${NUM_SAMPLES}" \

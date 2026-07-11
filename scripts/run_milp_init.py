@@ -100,10 +100,10 @@ def main(
         chiplets_out = [
             {
                 "name": p.chiplet_id,
-                "cx_mm": round(p.x + 0.5 * _rotated_w(case, p), 6),
-                "cy_mm": round(p.y + 0.5 * _rotated_h(case, p), 6),
-                "x_mm": round(p.x, 6),
-                "y_mm": round(p.y, 6),
+                "cx_mm": round(p.x, 6),
+                "cy_mm": round(p.y, 6),
+                "x_mm": round(p.x - 0.5 * _rotated_w(case, p), 6),
+                "y_mm": round(p.y - 0.5 * _rotated_h(case, p), 6),
                 "width_mm": round(_rotated_w(case, p), 6),
                 "height_mm": round(_rotated_h(case, p), 6),
                 "rotation": p.rotation,
@@ -187,7 +187,7 @@ def _annotate_legality(ax, overlap, outline):
 def _layout_from_summary(case, summary):
     from thermopt.layout.objects import Layout, Placement
     placements = [
-        Placement(c["name"], c["x_mm"], c["y_mm"], c["rotation"])
+        Placement(c["name"], c["cx_mm"], c["cy_mm"], c["rotation"])
         for c in summary["chiplets"]
     ]
     return Layout(tuple(placements))

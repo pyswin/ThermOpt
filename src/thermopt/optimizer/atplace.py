@@ -6,7 +6,7 @@ from typing import Callable
 
 import numpy as np
 
-from thermopt.layout.geometry import hpwl, total_outline_penalty, total_overlap_penalty
+from thermopt.layout.geometry import hpwl, min_pairwise_gap, total_outline_penalty, total_overlap_penalty
 from thermopt.layout.objects import FloorplanCase, Layout, Placement
 from thermopt.objective.cost import CostResult
 from thermopt.optimizer.sequence_pair import decode_sequence_pair
@@ -392,7 +392,7 @@ def _legal_perturb(
     return best, best_cost, curve
 
 
-def _legalize_by_sequence_pair(case: FloorplanCase, layout: Layout) -> Layout:
+def _legalize_by_sequence_pair(case: FloorplanCase, layout: Layout, min_gap: float = 0.0) -> Layout:
     rotations = {placement.chiplet_id: placement.rotation for placement in layout.placements}
     centers = {placement.chiplet_id: _placement_center(case, placement) for placement in layout.placements}
     candidates = [layout]
@@ -412,13 +412,16 @@ def _legalize_by_sequence_pair(case: FloorplanCase, layout: Layout) -> Layout:
         ),
     ]
     for positive, negative in orderings:
-        candidates.append(decode_sequence_pair(case, positive, negative, rotations))
+        candidates.append(decode_sequence_pair(case, positive, negative, rotations, min_gap=min_gap))
 
-    legal = [
-        candidate
-        for candidate in candidates
-        if total_overlap_penalty(case, candidate) <= 1e-9 and total_outline_penalty(case, candidate) <= 1e-9
-    ]
+    def _is_legal(candidate: Layout) -> bool:
+        return (
+            total_overlap_penalty(case, candidate) <= 1e-9
+            and total_outline_penalty(case, candidate) <= 1e-9
+            and min_pairwise_gap(case, candidate) >= min_gap - 1e-9
+        )
+
+    legal = [candidate for candidate in candidates if _is_legal(candidate)]
     if not legal:
         return min(candidates, key=lambda candidate: _legal_hpwl_score(case, candidate))
     return min(legal, key=lambda candidate: hpwl(case, candidate))
@@ -535,15 +538,14 @@ def _layout_from_milp(case: FloorplanCase, ids: list[str], values: np.ndarray, x
         orientation_values = values[o0 + 4 * i : o0 + 4 * i + 4]
         rotation = ROTATIONS[int(np.argmax(orientation_values))]
         width, height = _rotated_size(case, chiplet_id, rotation)
-        placements.append(Placement(chiplet_id, float(values[x0 + i] - width * 0.5), float(values[y0 + i] - height * 0.5), rotation))
+        placements.append(Placement(chiplet_id, float(values[x0 + i]), float(values[y0 + i]), rotation))
     return Layout(tuple(placements))
 
 
 def _layout_from_centers(case: FloorplanCase, ids: list[str], centers: np.ndarray, rotations: dict[str, int]) -> Layout:
     placements = []
     for chiplet_id, (cx, cy) in zip(ids, centers):
-        width, height = _rotated_size(case, chiplet_id, rotations[chiplet_id])
-        placements.append(Placement(chiplet_id, float(cx - width * 0.5), float(cy - height * 0.5), rotations[chiplet_id]))
+        placements.append(Placement(chiplet_id, float(cx), float(cy), rotations[chiplet_id]))
     return Layout(tuple(placements))
 
 
@@ -555,15 +557,14 @@ def _centered_grid_layout(case: FloorplanCase) -> Layout:
             x = 0.0
             y += row_height
             row_height = 0.0
-        placements.append(Placement(chiplet.id, x, y))
+        placements.append(Placement(chiplet.id, x + chiplet.width * 0.5, y + chiplet.height * 0.5))
         x += chiplet.width
         row_height = max(row_height, chiplet.height)
     return Layout(tuple(placements))
 
 
 def _placement_center(case: FloorplanCase, placement: Placement) -> tuple[float, float]:
-    width, height = placement.rotated_size(case.chiplet_by_id[placement.chiplet_id])
-    return placement.x + width * 0.5, placement.y + height * 0.5
+    return placement.x, placement.y
 
 
 def _rotated_size(case: FloorplanCase, chiplet_id: str, rotation: int) -> tuple[float, float]:

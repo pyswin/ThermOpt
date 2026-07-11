@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CASE_ROOT="${ROOT_DIR}/external/ATPlace_pub/cases"
 OUTPUT_ROOT="${ROOT_DIR}/outputs/thermopt_dataset_qc500"
 
@@ -105,7 +105,7 @@ backend = os.environ["BACKEND"]
 hotspot_required = os.environ["HOTSPOT_REQUIRED"].lower() == "true"
 hotspot_allow_fallback = os.environ["HOTSPOT_ALLOW_FALLBACK"].lower() == "true"
 
-generator_script = root_dir / "scripts" / "generate_thermal_dataset.py"
+generator_script = root_dir / "scripts" / "dataset_gen" / "generate_thermal_dataset.py"
 python = sys.executable or "python3"
 
 mode_seed_offsets = {

@@ -99,9 +99,10 @@ def _parse_pl_layout(path: Path, case: FloorplanCase, scale: float) -> Layout:
         if len(words) < 3 or words[0] not in chiplets:
             continue
         chiplet = chiplets[words[0]]
-        cx = float(words[1]) * scale
-        cy = float(words[2]) * scale
-        placements.append(Placement(chiplet.id, cx, cy))
+        # .pl (Bookshelf-style) coordinates are the lower-left corner; Placement.x/y is center.
+        x0 = float(words[1]) * scale
+        y0 = float(words[2]) * scale
+        placements.append(Placement(chiplet.id, x0 + chiplet.width * 0.5, y0 + chiplet.height * 0.5))
     return Layout(tuple(placements))
 
 

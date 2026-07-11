@@ -136,7 +136,7 @@ def propose_named_move(
     width, height = placement.rotated_size(chiplet)
     # Keep most proposals near the outline while still allowing penalties to guide recovery.
     margin = max(case.outline_width, case.outline_height) * 0.1
-    x = float(np.clip(placement.x + dx, -margin, case.outline_width - width + margin))
-    y = float(np.clip(placement.y + dy, -margin, case.outline_height - height + margin))
+    x = float(np.clip(placement.x + dx, width * 0.5 - margin, case.outline_width - width * 0.5 + margin))
+    y = float(np.clip(placement.y + dy, height * 0.5 - margin, case.outline_height - height * 0.5 + margin))
     placements[idx] = placement.moved(x=x, y=y)
     return Layout(tuple(placements))

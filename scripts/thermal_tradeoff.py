@@ -63,10 +63,13 @@ def layout_to_dict(case, layout):
     rows = []
     for p in layout.placements:
         chip = case.chiplet_by_id[p.chiplet_id]
+        width, height = p.rotated_size(chip)
         rows.append({
             "name": p.chiplet_id,
-            "x_mm": round(p.x, 6),
-            "y_mm": round(p.y, 6),
+            "x_mm": round(p.x - 0.5 * width, 6),
+            "y_mm": round(p.y - 0.5 * height, 6),
+            "cx_mm": round(p.x, 6),
+            "cy_mm": round(p.y, 6),
             "rotation": p.rotation,
             "width_mm": chip.width,
             "height_mm": chip.height,

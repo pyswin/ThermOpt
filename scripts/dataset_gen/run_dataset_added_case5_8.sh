@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CASE_ROOT="${ROOT_DIR}/external/ATPlace_pub/cases"
 OUTPUT_ROOT="${ROOT_DIR}/outputs/dataset_added"
 ZIP_PATH="${OUTPUT_ROOT}/augmented_datasets.zip"
@@ -22,7 +22,7 @@ rm -rf \
 
 for case_id in 5 6 7 8; do
   echo "Generating Case${case_id}"
-  python3 "${ROOT_DIR}/scripts/generate_thermal_dataset.py" \
+  python3 "${ROOT_DIR}/scripts/dataset_gen/generate_thermal_dataset.py" \
     --case_dir "${CASE_ROOT}/Case${case_id}" \
     --output_dir "${OUTPUT_ROOT}/case${case_id}" \
     --num_samples 1000 \
@@ -32,7 +32,7 @@ done
 
 for case_id in 5 6 7 8; do
   echo "Augmenting case${case_id}"
-  python3 "${ROOT_DIR}/scripts/augment_pointwise_features.py" \
+  python3 "${ROOT_DIR}/scripts/dataset_gen/augment_pointwise_features.py" \
     --dataset_dir "${OUTPUT_ROOT}/case${case_id}" \
     --output_dir "${OUTPUT_ROOT}/case${case_id}_augmented"
 done

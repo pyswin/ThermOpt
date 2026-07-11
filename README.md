@@ -163,7 +163,7 @@ python3 scripts/hotspot_validate.py
 
 ```bash
 # 需要 gurobipy + 有效 license，例如 conda env atplace_py39：
-/path/to/envs/atplace_py39/bin/python scripts/run_milp_dataset.py
+/path/to/envs/atplace_py39/bin/python scripts/dataset_gen/run_milp_dataset.py
 ```
 
 两阶段流程，只产生位置数据，**不跑热仿真**：
@@ -189,10 +189,10 @@ python3 scripts/hotspot_validate.py
 
 `legal` 字段标记该样本是否完全合法（无重叠、不越界）——sequence-pair 合法化不保证 100% 成功，各 case 合法率约 68%–99%，下游按需过滤。
 
-数据集 JSON 里的 `chiplets` 是扁平字典列表，不能直接传给 objective/`HotSpotBackend` —— 用 `thermopt.data.dataset_io.layout_from_chiplets_json(record["chiplets"])` 转换回 `Layout`（`scripts/hotspot_dataset_check.py` 演示了完整链路：读取一条 perturb 记录 → 转换 → 跑 HotSpot 仿真出温度图）：
+数据集 JSON 里的 `chiplets` 是扁平字典列表，不能直接传给 objective/`HotSpotBackend` —— 用 `thermopt.data.dataset_io.layout_from_chiplets_json(record["chiplets"])` 转换回 `Layout`（`scripts/dataset_gen/hotspot_dataset_check.py` 演示了完整链路：读取一条 perturb 记录 → 转换 → 跑 HotSpot 仿真出温度图）：
 
 ```bash
-python3 scripts/hotspot_dataset_check.py atplace/milp_wl_dataset/{timestamp} Case1
+python3 scripts/dataset_gen/hotspot_dataset_check.py atplace/milp_wl_dataset/{timestamp} Case1
 ```
 
 ---
@@ -299,7 +299,7 @@ Important behavior:
 Generate 1000 successful samples with position randomization only:
 
 ```bash
-python3 scripts/generate_thermal_dataset.py \
+python3 scripts/dataset_gen/generate_thermal_dataset.py \
   --case_dir external/ATPlace_pub/cases/Case1 \
   --output_dir outputs/thermopt_dataset \
   --num_samples 1000 \
@@ -311,7 +311,7 @@ python3 scripts/generate_thermal_dataset.py \
 Keep layout fixed, only vary power:
 
 ```bash
-python3 scripts/generate_thermal_dataset.py \
+python3 scripts/dataset_gen/generate_thermal_dataset.py \
   --case_dir external/ATPlace_pub/cases/Case1 \
   --output_dir outputs/thermopt_dataset \
   --num_samples 1000 \
@@ -323,7 +323,7 @@ python3 scripts/generate_thermal_dataset.py \
 Keep layout fixed and generate a stable baseline dataset:
 
 ```bash
-python3 scripts/generate_thermal_dataset.py \
+python3 scripts/dataset_gen/generate_thermal_dataset.py \
   --case_dir external/ATPlace_pub/cases/Case1 \
   --output_dir outputs/thermopt_dataset \
   --num_samples 1000 \
@@ -336,7 +336,7 @@ python3 scripts/generate_thermal_dataset.py \
 Generate a monotonic power sweep:
 
 ```bash
-python3 scripts/generate_thermal_dataset.py \
+python3 scripts/dataset_gen/generate_thermal_dataset.py \
   --case_dir external/ATPlace_pub/cases/Case1 \
   --output_dir outputs/thermopt_dataset \
   --num_samples 1000 \
@@ -346,7 +346,7 @@ python3 scripts/generate_thermal_dataset.py \
 Generate with real HotSpot and fail if it is missing or fails:
 
 ```bash
-python3 scripts/generate_thermal_dataset.py \
+python3 scripts/dataset_gen/generate_thermal_dataset.py \
   --case_dir external/ATPlace_pub/cases/Case1 \
   --output_dir outputs/thermopt_dataset \
   --num_samples 1000 \
@@ -358,14 +358,14 @@ python3 scripts/generate_thermal_dataset.py \
 Augment an existing dataset in place or into a separate directory:
 
 ```bash
-python3 scripts/augment_pointwise_features.py \
+python3 scripts/dataset_gen/augment_pointwise_features.py \
   --dataset_dir outputs/thermopt_dataset/case1
 ```
 
 Write the augmented CSVs to another directory:
 
 ```bash
-python3 scripts/augment_pointwise_features.py \
+python3 scripts/dataset_gen/augment_pointwise_features.py \
   --dataset_dir outputs/thermopt_dataset/case1 \
   --output_dir outputs/thermopt_dataset/case1_augmented
 ```

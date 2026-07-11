@@ -21,8 +21,24 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from thermopt.layout.objects import FloorplanCase, Layout
+from thermopt.layout.objects import FloorplanCase, Layout, Placement
 from thermopt.optimizer.milp_wl import MILPInitResult, MILPProblem, build_init_problem, decode_init_solution
+
+
+def _clamp_to_outline(case: FloorplanCase, layout: Layout) -> Layout:
+    """Gurobi's default feasibility tolerance (~1e-6 relative) can leave a chiplet
+    edge a few microns outside the outline. HotSpot has zero tolerance for that
+    (every .flp layer must span the exact same extent), so clip each placement
+    back into [0, outline] -- the violation is solver numerical noise, not a real
+    geometric conflict, so a clamp is safe and doesn't change the solution."""
+    placements = []
+    for p in layout.placements:
+        chiplet = case.chiplet_by_id[p.chiplet_id]
+        w, h = p.rotated_size(chiplet)
+        x = min(max(p.x, w * 0.5), max(w * 0.5, case.outline_width - w * 0.5))
+        y = min(max(p.y, h * 0.5), max(h * 0.5, case.outline_height - h * 0.5))
+        placements.append(Placement(p.chiplet_id, x, y, p.rotation))
+    return Layout(tuple(placements))
 
 
 @dataclass(frozen=True)
@@ -73,7 +89,7 @@ def initialize_with_snapshots(
     state = {"last_saved_t": -1e9, "last_vals": None}
 
     def _record(t: float, vals: np.ndarray) -> None:
-        layout = decode_init_solution(case, problem, vals)
+        layout = _clamp_to_outline(case, decode_init_solution(case, problem, vals))
         snapshots.append(Snapshot(t=float(t), layout=layout))
         state["last_saved_t"] = t
 
@@ -106,7 +122,7 @@ def initialize_with_snapshots(
         )
 
     final_vals = np.array([v.X for v in model._vars])
-    layout = decode_init_solution(case, problem, final_vals)
+    layout = _clamp_to_outline(case, decode_init_solution(case, problem, final_vals))
     # Always keep a snapshot of the true final incumbent, even if it landed inside
     # the last `snapshot_interval` window.
     solve_time = model.Runtime

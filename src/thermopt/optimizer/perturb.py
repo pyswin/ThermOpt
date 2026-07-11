@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from thermopt.layout.objects import FloorplanCase, Layout, Placement
-from thermopt.layout.geometry import total_outline_penalty, total_overlap_penalty
+from thermopt.layout.geometry import min_pairwise_gap, total_outline_penalty, total_overlap_penalty
 from thermopt.optimizer.atplace import _legalize_by_sequence_pair
 
 MOVE_SMALL = "move_small"
@@ -27,11 +27,12 @@ class PerturbResult:
     touched: tuple[str, ...]
     overlap: float
     outline: float
+    gap: float
     legal: bool
 
 
-def legalize(case: FloorplanCase, layout: Layout) -> Layout:
-    return _legalize_by_sequence_pair(case, layout)
+def legalize(case: FloorplanCase, layout: Layout, min_gap: float = 0.0) -> Layout:
+    return _legalize_by_sequence_pair(case, layout, min_gap=min_gap)
 
 
 def rectangular_ids(case: FloorplanCase) -> list[str]:
@@ -88,8 +89,8 @@ def translate_move(
         chiplet = case.chiplet_by_id[chiplet_id]
         width, height = placement.rotated_size(chiplet)
         dx, dy = rng.uniform(-max_move, max_move, size=2)
-        x = float(np.clip(placement.x + dx, -0.1 * max_move, case.outline_width - width + 0.1 * max_move))
-        y = float(np.clip(placement.y + dy, -0.1 * max_move, case.outline_height - height + 0.1 * max_move))
+        x = float(np.clip(placement.x + dx, width * 0.5 - 0.1 * max_move, case.outline_width - width * 0.5 + 0.1 * max_move))
+        y = float(np.clip(placement.y + dy, height * 0.5 - 0.1 * max_move, case.outline_height - height * 0.5 + 0.1 * max_move))
         updates.append(placement.moved(x=x, y=y))
     return layout.replace_many(updates), tuple(touched)
 
@@ -116,6 +117,47 @@ def move_weights(allow_rotate: bool) -> tuple[list[str], list[float]]:
     return moves, [w / total for w in weights]
 
 
+FAMILY_SWAP = "swap"
+FAMILY_TRANSLATE = "translate"
+FAMILY_ROTATE = "rotate"
+# translate covers both move_small and move_more (0.25 + 0.25), matching move_weights above
+FAMILY_WEIGHTS = {FAMILY_SWAP: 0.30, FAMILY_TRANSLATE: 0.50, FAMILY_ROTATE: 0.20}
+
+
+def _available_families(allow_rotate: bool) -> list[str]:
+    families = [FAMILY_SWAP, FAMILY_TRANSLATE]
+    if allow_rotate:
+        families.append(FAMILY_ROTATE)
+    return families
+
+
+def _apply_family(
+    family: str,
+    case: FloorplanCase,
+    layout: Layout,
+    rng: np.random.Generator,
+    small_k_range: tuple[int, int],
+    more_k_range: tuple[int, int],
+    max_move_frac: float,
+) -> tuple[Layout, tuple[str, ...], str] | None:
+    """Apply one family's operation. Returns None only if rotate has no
+    rotatable candidate (shouldn't happen given the allow_rotate gate, kept
+    as a defensive fallback)."""
+    if family == FAMILY_SWAP:
+        new_layout, touched = swap_move(case, layout, rng)
+        return new_layout, touched, SWAP
+    if family == FAMILY_TRANSLATE:
+        move_type = str(rng.choice([MOVE_SMALL, MOVE_MORE]))
+        k_range = small_k_range if move_type == MOVE_SMALL else more_k_range
+        new_layout, touched = translate_move(case, layout, rng, *k_range, max_move_frac)
+        return new_layout, touched, move_type
+    rotated = rotate_move(case, layout, rng)
+    if rotated is None:
+        return None
+    new_layout, touched = rotated
+    return new_layout, touched, ROTATE
+
+
 def generate_one(
     case: FloorplanCase,
     layout: Layout,
@@ -123,34 +165,59 @@ def generate_one(
     small_k_range: tuple[int, int],
     more_k_range: tuple[int, int],
     max_move_frac: float = 0.12,
+    min_gap: float = 0.0,
+    max_families: int = 1,
 ) -> PerturbResult:
-    n = len(case.chiplets)
+    """A single perturbation hop composed of 1..max_families operations drawn
+    from *different* families (swap, translate, rotate) — move_small and
+    move_more are both the "translate" family and mutually exclusive within
+    one hop, since combining two translate draws isn't a meaningfully
+    distinct operation. All chosen operations are applied in sequence before
+    a single legalize() call.
+
+    max_families=1 (default) reproduces the original single-move-type
+    behavior and its exact move_weights() probabilities (translate splits
+    50/50 into move_small/move_more, i.e. 0.25/0.25 each). max_families=2
+    lets a hop combine e.g. "swap+rotate" — this matters for small cases,
+    where a single-family hop often doesn't change the sequence-pair
+    ordering at all (and so decodes to a byte-identical layout); composing
+    families multiplies the number of distinct one-hop neighbors reachable
+    from a given seed.
+    """
     allow_rotate = len(rectangular_ids(case)) > 0
-    moves, probs = move_weights(allow_rotate)
-    move_type = str(rng.choice(moves, p=probs))
+    families = _available_families(allow_rotate)
+    n_families = int(rng.integers(1, min(max_families, len(families)) + 1))
+    weights = np.array([FAMILY_WEIGHTS[f] for f in families], dtype=float)
+    weights = weights / weights.sum()
+    chosen = rng.choice(families, size=n_families, replace=False, p=weights)
 
-    if move_type == SWAP:
-        candidate, touched = swap_move(case, layout, rng)
-    elif move_type == MOVE_SMALL:
-        candidate, touched = translate_move(case, layout, rng, *small_k_range, max_move_frac)
-    elif move_type == MOVE_MORE:
-        candidate, touched = translate_move(case, layout, rng, *more_k_range, max_move_frac)
-    else:  # ROTATE
-        rotated = rotate_move(case, layout, rng)
-        if rotated is None:
-            candidate, touched = translate_move(case, layout, rng, *small_k_range, max_move_frac)
-            move_type = MOVE_SMALL
-        else:
-            candidate, touched = rotated
+    candidate = layout
+    touched_all: list[str] = []
+    applied_types: list[str] = []
+    for family in chosen:
+        result = _apply_family(str(family), case, candidate, rng, small_k_range, more_k_range, max_move_frac)
+        if result is None:
+            continue
+        candidate, touched, move_type = result
+        touched_all.extend(touched)
+        applied_types.append(move_type)
 
-    legal_layout = legalize(case, candidate)
+    if not applied_types:
+        candidate, touched_all = translate_move(case, layout, rng, *small_k_range, max_move_frac)
+        touched_all = list(touched_all)
+        applied_types = [MOVE_SMALL]
+    move_type_label = "+".join(applied_types)
+
+    legal_layout = legalize(case, candidate, min_gap=min_gap)
     overlap = total_overlap_penalty(case, legal_layout)
     outline = total_outline_penalty(case, legal_layout)
+    gap = min_pairwise_gap(case, legal_layout)
     return PerturbResult(
         layout=legal_layout,
-        move_type=move_type,
-        touched=touched,
+        move_type=move_type_label,
+        touched=tuple(touched_all),
         overlap=overlap,
         outline=outline,
-        legal=overlap <= 1e-9 and outline <= 1e-9,
+        gap=gap,
+        legal=overlap <= 1e-9 and outline <= 1e-9 and gap >= min_gap - 1e-9,
     )

@@ -32,14 +32,20 @@ def load_layout_from_milp(case_name: str) -> Layout:
     ])
 
 
-def load_layout_from_summary(summary_path: Path) -> Layout:
+def load_layout_from_summary(case, summary_path: Path) -> Layout:
+    # historical summary.json stores x_mm/y_mm as the lower-left corner; Placement.x/y is center.
     d = json.load(open(summary_path))
-    return Layout(placements=[
-        Placement(chiplet_id=c["name"],
-                  x=c["x_mm"], y=c["y_mm"],
-                  rotation=c["rotation"])
-        for c in d["chiplets"]
-    ])
+    placements = []
+    for c in d["chiplets"]:
+        chiplet = case.chiplet_by_id[c["name"]]
+        width, height = (chiplet.height, chiplet.width) if c["rotation"] % 180 == 90 else (chiplet.width, chiplet.height)
+        placements.append(Placement(
+            chiplet_id=c["name"],
+            x=c["x_mm"] + width * 0.5,
+            y=c["y_mm"] + height * 0.5,
+            rotation=c["rotation"],
+        ))
+    return Layout(placements=placements)
 
 
 def hotspot_temps(backend, case, layout):
@@ -96,7 +102,7 @@ def main():
 
             summ_path = ALLCASES_RUN / case_name / mode / "summary.json"
             summ = json.load(open(summ_path))
-            layout1 = load_layout_from_summary(summ_path)
+            layout1 = load_layout_from_summary(case, summ_path)
             wl1 = summ["final"]["wl_m"]
             t0 = time.time()
             res1 = hotspot_temps_safe(backend, case, layout1)

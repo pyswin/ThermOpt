@@ -154,7 +154,7 @@ def _greedy_connectivity_layout(
             cur_y += row_h
             cur_x, row_h = 0.0, 0.0
         x = min(cur_x, max(0.0, case.outline_width - w))
-        placements.append(Placement(cid, x, cur_y, rot))
+        placements.append(Placement(cid, x + w * 0.5, cur_y + h * 0.5, rot))
         cur_x += w
         row_h = max(row_h, h)
 

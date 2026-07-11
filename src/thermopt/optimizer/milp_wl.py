@@ -280,9 +280,8 @@ def _decode_init(case: FloorplanCase, ids: list[str], vals: np.ndarray, x0: int,
     placements = []
     for i, cid in enumerate(ids):
         rot = _ROTATIONS[int(np.argmax(vals[o0 + 4 * i : o0 + 4 * i + 4]))]
-        w, h = _rotated_wh(case, cid, rot)
-        # convert centre → bottom-left corner (same convention as rest of codebase)
-        placements.append(Placement(cid, float(vals[x0 + i] - w * 0.5), float(vals[y0 + i] - h * 0.5), rot))
+        # vals[x0+i]/vals[y0+i] are already chiplet centers (see MILP variable docs above)
+        placements.append(Placement(cid, float(vals[x0 + i]), float(vals[y0 + i]), rot))
     return Layout(tuple(placements))
 
 
@@ -292,7 +291,7 @@ def _grid_fallback(case: FloorplanCase) -> Layout:
     for chiplet in case.chiplets:
         if x + chiplet.width > case.outline_width:
             x = 0.0; y += row_h; row_h = 0.0
-        placements.append(Placement(chiplet.id, x, y))
+        placements.append(Placement(chiplet.id, x + chiplet.width * 0.5, y + chiplet.height * 0.5))
         x += chiplet.width
         row_h = max(row_h, chiplet.height)
     return Layout(tuple(placements))
@@ -459,9 +458,7 @@ def optimize(
     placements: list[Placement] = []
     for i, chiplet_id in enumerate(ids):
         rotation = int(round(values[r0 + i])) * 90
-        width = width0[i] + delta_width[i] * int(round(values[r0 + i]))
-        height = height0[i] + delta_height[i] * int(round(values[r0 + i]))
-        placements.append(Placement(chiplet_id, float(values[x0 + i] - width * 0.5), float(values[y0 + i] - height * 0.5), rotation))
+        placements.append(Placement(chiplet_id, float(values[x0 + i]), float(values[y0 + i]), rotation))
 
     layout = Layout(tuple(placements))
     cost = objective(layout)

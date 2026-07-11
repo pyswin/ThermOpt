@@ -278,7 +278,7 @@ def _shelf_pack(case: FloorplanCase, ordered: list[str], rotations: dict[str, in
             row_height = 0.0
         if y + height > case.outline_height:
             return decode_sequence_pair(case, ordered, list(reversed(ordered)), rotations)
-        placements.append(Placement(chiplet_id, x, y, rotations[chiplet_id]))
+        placements.append(Placement(chiplet_id, x + width * 0.5, y + height * 0.5, rotations[chiplet_id]))
         x += width + spacing
         row_height = max(row_height, height)
     return Layout(tuple(placements))
@@ -411,8 +411,7 @@ def _legal_hpwl_score(case: FloorplanCase, layout: Layout) -> float:
 def _layout_from_centers(case: FloorplanCase, ids: list[str], centers: np.ndarray, rotations: dict[str, int]) -> Layout:
     placements = []
     for chiplet_id, (cx, cy) in zip(ids, centers):
-        width, height = _rotated_size(case, chiplet_id, rotations[chiplet_id])
-        placements.append(Placement(chiplet_id, float(cx - width * 0.5), float(cy - height * 0.5), rotations[chiplet_id]))
+        placements.append(Placement(chiplet_id, float(cx), float(cy), rotations[chiplet_id]))
     return Layout(tuple(placements))
 
 
@@ -424,8 +423,7 @@ def _sequence_pair_from_layout(case: FloorplanCase, layout: Layout) -> tuple[lis
 
 
 def _placement_center(case: FloorplanCase, placement: Placement) -> tuple[float, float]:
-    width, height = placement.rotated_size(case.chiplet_by_id[placement.chiplet_id])
-    return placement.x + width * 0.5, placement.y + height * 0.5
+    return placement.x, placement.y
 
 
 def _rotated_size(case: FloorplanCase, chiplet_id: str, rotation: int) -> tuple[float, float]:

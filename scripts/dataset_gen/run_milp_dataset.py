@@ -34,7 +34,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT = Path(__file__).parent.parent
+ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from thermopt.data.atplace import load_atplace_case
@@ -159,10 +159,10 @@ def _layout_to_json(case: FloorplanCase, layout: Layout) -> list[dict]:
         out.append(
             {
                 "name": p.chiplet_id,
-                "x_mm": round(p.x, 6),
-                "y_mm": round(p.y, 6),
-                "cx_mm": round(p.x + 0.5 * w, 6),
-                "cy_mm": round(p.y + 0.5 * h, 6),
+                "x_mm": round(p.x - 0.5 * w, 6),
+                "y_mm": round(p.y - 0.5 * h, 6),
+                "cx_mm": round(p.x, 6),
+                "cy_mm": round(p.y, 6),
                 "width_mm": round(w, 6),
                 "height_mm": round(h, 6),
                 "rotation": p.rotation,
@@ -246,8 +246,8 @@ def _plot_trajectory(case: FloorplanCase, snapshots: list[Snapshot], path: Path,
     ids = [p.chiplet_id for p in snapshots[0].layout.placements]
     cmap = plt.get_cmap("tab20", max(len(ids), 1))
     for ci, chiplet_id in enumerate(ids):
-        xs = [s.layout.by_id[chiplet_id].x + 0.5 * s.layout.by_id[chiplet_id].rotated_size(case.chiplet_by_id[chiplet_id])[0] for s in snapshots]
-        ys = [s.layout.by_id[chiplet_id].y + 0.5 * s.layout.by_id[chiplet_id].rotated_size(case.chiplet_by_id[chiplet_id])[1] for s in snapshots]
+        xs = [s.layout.by_id[chiplet_id].x for s in snapshots]
+        ys = [s.layout.by_id[chiplet_id].y for s in snapshots]
         ax.plot(xs, ys, "-o", color=cmap(ci), markersize=3, linewidth=0.8, alpha=0.8, label=chiplet_id)
     draw_layout(ax, case, snapshots[-1].layout, f"{title}  MILP trajectory ({len(snapshots)} snapshots)")
     fig.tight_layout()

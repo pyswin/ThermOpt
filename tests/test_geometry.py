@@ -19,8 +19,8 @@ def test_overlap_area() -> None:
 
 def test_outline_violation() -> None:
     case = make_case()
-    assert outline_violation(case, Placement("A", 0, 0)) == 0
-    assert outline_violation(case, Placement("A", 35, 25)) == 50
+    assert outline_violation(case, Placement("A", 5, 5)) == 0
+    assert outline_violation(case, Placement("A", 40, 30)) == 50
 
 
 def test_hpwl() -> None:

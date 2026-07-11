@@ -91,8 +91,8 @@ def load_pointwise_case(path: Path, config: dict) -> CaseInput:
         height = max(min_size, float(area / width))
         cx = float(np.mean([float(row["grid_x"]) for row in group]) - grid_xs.min()) * scale_x
         cy = float(np.mean([float(row["grid_y"]) for row in group]) - grid_ys.min()) * scale_y
-        x = min(max(0.0, cx - width * 0.5), max(0.0, outline_width - width))
-        y = min(max(0.0, cy - height * 0.5), max(0.0, outline_height - height))
+        x = min(max(width * 0.5, cx), max(width * 0.5, outline_width - width * 0.5))
+        y = min(max(height * 0.5, cy), max(height * 0.5, outline_height - height * 0.5))
 
         chiplets.append(
             Chiplet(

@@ -96,6 +96,7 @@ def decode_sequence_pair(
     positive: list[str],
     negative: list[str],
     rotations: dict[str, int],
+    min_gap: float = 0.0,
 ) -> Layout:
     pos_index = {chiplet_id: index for index, chiplet_id in enumerate(positive)}
     neg_index = {chiplet_id: index for index, chiplet_id in enumerate(negative)}
@@ -114,13 +115,20 @@ def decode_sequence_pair(
                 continue
             if pos_index[source] < pos_index[target]:
                 if neg_index[source] < neg_index[target]:
-                    x[target] = max(x[target], x[source] + sizes[source][0])
+                    x[target] = max(x[target], x[source] + sizes[source][0] + min_gap)
                 else:
-                    y[target] = max(y[target], y[source] + sizes[source][1])
+                    y[target] = max(y[target], y[source] + sizes[source][1] + min_gap)
 
+    # x/y above are corner (lower-left) positions from the compaction packing;
+    # Placement.x/y is center, so shift each by half its size before returning.
     return Layout(
         tuple(
-            Placement(chiplet_id=chiplet_id, x=x[chiplet_id], y=y[chiplet_id], rotation=rotations.get(chiplet_id, 0))
+            Placement(
+                chiplet_id=chiplet_id,
+                x=x[chiplet_id] + sizes[chiplet_id][0] * 0.5,
+                y=y[chiplet_id] + sizes[chiplet_id][1] * 0.5,
+                rotation=rotations.get(chiplet_id, 0),
+            )
             for chiplet_id in ids
         )
     )

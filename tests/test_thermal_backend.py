@@ -197,7 +197,7 @@ def test_hotspot_floorplan_expands_outline_and_uses_absolute_paths(tmp_path: Pat
         outline_width=20.0,
         outline_height=20.0,
     )
-    layout = Layout((Placement("A", 0.0, 0.0), Placement("B", 17.0, 0.0)))
+    layout = Layout((Placement("A", 2.0, 2.0), Placement("B", 19.0, 2.0)))
 
     workspace = tmp_path / "hotspot"
     workspace.mkdir()
@@ -308,8 +308,8 @@ def test_thermfm_backend_rasterizes_inputs_and_returns_celsius(tmp_path: Path) -
     )
     layout = Layout(
         (
-            Placement("A", 0.0, 0.0),
-            Placement("B", 4.0, 0.0, 90),
+            Placement("A", 1.5, 1.0),
+            Placement("B", 6.0, 1.0, 90),
         )
     )
 
@@ -361,8 +361,8 @@ def test_ufno_backend_rasterizes_inputs_and_returns_celsius(tmp_path: Path) -> N
     )
     layout = Layout(
         (
-            Placement("A", 0.0, 0.0),
-            Placement("B", 4.0, 0.0, 90),
+            Placement("A", 1.5, 1.0),
+            Placement("B", 6.0, 1.0, 90),
         )
     )
 

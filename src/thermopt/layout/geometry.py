@@ -6,7 +6,8 @@ from thermopt.layout.objects import FloorplanCase, Layout, Placement
 def bounds(case: FloorplanCase, placement: Placement) -> tuple[float, float, float, float]:
     chiplet = case.chiplet_by_id[placement.chiplet_id]
     width, height = placement.rotated_size(chiplet)
-    return placement.x, placement.y, placement.x + width, placement.y + height
+    x0, y0 = placement.lower_left(chiplet)
+    return x0, y0, x0 + width, y0 + height
 
 
 def center(case: FloorplanCase, placement: Placement) -> tuple[float, float]:
@@ -54,6 +55,27 @@ def total_overlap_penalty(case: FloorplanCase, layout: Layout) -> float:
 def total_outline_penalty(case: FloorplanCase, layout: Layout) -> float:
     norm = max(case.outline_width * case.outline_height, 1e-9)
     return sum(outline_violation(case, placement) for placement in layout.placements) / norm
+
+
+def pair_clearance(a_bounds: tuple[float, float, float, float], b_bounds: tuple[float, float, float, float]) -> float:
+    """Separating gap along whichever axis keeps the two rectangles apart (matches the
+    single-axis separation sequence-pair decoding guarantees). Negative means overlap."""
+    ax0, ay0, ax1, ay1 = a_bounds
+    bx0, by0, bx1, by1 = b_bounds
+    return max(bx0 - ax1, ax0 - bx1, by0 - ay1, ay0 - by1)
+
+
+def min_pairwise_gap(case: FloorplanCase, layout: Layout) -> float:
+    """Smallest edge-to-edge clearance across every pair of placements. +inf if fewer than 2."""
+    placements = layout.placements
+    if len(placements) < 2:
+        return float("inf")
+    gaps = []
+    all_bounds = [bounds(case, placement) for placement in placements]
+    for i, left_bounds in enumerate(all_bounds):
+        for right_bounds in all_bounds[i + 1 :]:
+            gaps.append(pair_clearance(left_bounds, right_bounds))
+    return min(gaps)
 
 
 def hpwl(case: FloorplanCase, layout: Layout) -> float:
