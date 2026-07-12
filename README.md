@@ -34,25 +34,26 @@ ThermOpt/
 ├── scripts/
 │   ├── thermal_optimize.py           # 热优化主脚本（全力降温，WL 无约束）
 │   ├── thermal_tradeoff.py           # WL-Thermal 权衡分析脚本（多权重/多约束）
-│   ├── hotspot_validate.py           # HotSpot 真实仿真验证脚本
 │   ├── run_milp_init.py              # Phase-1 MILP 初始化 benchmark（Cases 1-8，scipy/HiGHS 后端）
-│   ├── run_milp_dataset.py           # Gurobi MILP 求解 + 中间快照 + swap/move/rotate 扰动数据集生成（详见下方章节）
-│   ├── hotspot_dataset_check.py      # 验证 run_milp_dataset.py 产出的 JSON 能转换回 Layout 并跑通 HotSpot 仿真
+│   ├── run_milp150s_hotspot.py       # Gurobi Phase-1 MILP + HotSpot 初始 Tmax（Case1-10 初始解，详见下方章节）
 │   ├── run_milp_thermal.py           # MILP 布局 + UFNO/HotSpot 热仿真精度对比
 │   ├── spacing_repair_eval.py        # 现有布局最小间距修复 + 热仿真对比
 │   ├── test_thermal.py               # 独立热仿真后端对照测试（不涉及优化）
-│   ├── generate_thermal_dataset.py   # 生成用于训练热代理模型的数据集
 │   ├── plot_opt_comparison.py        # 优化前后 HotSpot/UFNO 温度对比图
-│   ├── plot_thermal_comparison.py    # HotSpot vs ScOT 温度图对比
-│   ├── plot_ufno_accuracy.py         # UFNO(ScOT) vs HotSpot 精度检查
+│   ├── plot_saufno_ufno_vs_hotspot.py # SAU-FNO/UFNO vs HotSpot 精度+可视化对比
+│   ├── dataset_gen/
+│   │   ├── run_milp_dataset.py         # Gurobi MILP 求解 + 中间快照 + swap/move/rotate 扰动数据集生成（详见下方章节）
+│   │   ├── hotspot_dataset_check.py    # 验证 run_milp_dataset.py 产出的 JSON 能转换回 Layout 并跑通 HotSpot 仿真
+│   │   ├── generate_thermal_dataset.py # 生成用于训练热代理模型的数据集
+│   │   └── json_to_augmented_csv.py    # 把 milp_runs/ 下已有的布局 JSON 转成 pointwise_augmented CSV（可选跑 HotSpot 填真值）
 │   └── run_*.sh                      # thermopt.experiments.* 的配置化入口（atplace/atmplace × 热后端、rl_refinement、v0_sa 等，见 configs/*.yaml）
 ├── external/ATPlace_pub/
 │   ├── cases/                        # ATPlace benchmark cases（Case1–Case10）
 │   └── thermal/hotspot               # HotSpot Linux x86-64 binary
 └── atplace/
     ├── 20260627_163106_milp150s/     # MILP 基准解（ATPlace 第一阶段，150s 时限）
-    ├── thermal_runs/
-    │   └── 20260628_004144_maxT/     # 热优化最终结果（含 HotSpot 验证）
+    ├── milp_runs/
+    │   └── 20260712_case1_10_gurobi_hotspot/  # Case1-10 MILP 初始解 + HotSpot 初始 Tmax（唯一保留版本）
     └── milp_wl_dataset/
         └── {timestamp}/              # run_milp_dataset.py 的输出（intermediate/ + perturb/，见下方章节）
 ```
@@ -149,17 +150,7 @@ python3 scripts/thermal_tradeoff.py \
 
 对每组 `(case, thermal_weight, WL预算, 热目标)` 组合独立运行，输出完整对比表。tight/loose 两档 WL 预算在脚本内的 `TIGHT_BUDGET` 字典中按 case 配置。
 
-### 3. HotSpot 真实仿真验证
-
-```bash
-python3 scripts/hotspot_validate.py
-```
-
-读取 `atplace/thermal_runs/20260628_004144_maxT/` 下的优化结果，对初始布局和优化后布局各运行一次 HotSpot，输出温度对比表并保存至 `hotspot_validation.json`。
-
-> HotSpot 每次仿真约 1–3 分钟，5 个 case × 3 次 = 约 20–30 分钟。
-
-### 4. MILP 中间快照 + 位置扰动数据集（Cases 1-8）
+### 3. MILP 中间快照 + 位置扰动数据集（Cases 1-8）
 
 ```bash
 # 需要 gurobipy + 有效 license，例如 conda env atplace_py39：
@@ -230,8 +221,6 @@ Case1/2/4 存在坐标解析偏差，暂不纳入；Case9/10 未测试。
 | Case8 |  61.6°C |  59.7°C | **-1.9°C**  |  60.9°C |  59.5°C | -1.4°C |  +3% |
 
 **ScOT 预测误差**：ScOT 作为代理模型，预测误差因 case 而异（-28°C 到 +7°C），但梯度方向基本正确，优化后各 case 温度均有实际降低。Case5 的 ScOT 初始温度预测偏低约 28°C（102°C vs HotSpot 130°C），说明该布局已偏离 ScOT 训练分布。
-
-完整数值（含 tmax50 目标及 ScOT 预测误差列）见 `atplace/thermal_runs/20260628_004144_maxT/hotspot_validation.json`。
 
 ---
 

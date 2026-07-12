@@ -14,7 +14,7 @@ whichever gives zero overlap and no outline violation), not assumed:
   - CaseN/layout.json  (e.g. atplace/20260627_163106_milp150s): external
     ATPlace_pub/reproduce.py output. Units um, x/y is CENTER, rotation as
     angle_rad.
-  - CaseN/summary.json (e.g. atplace/milp_runs/v1_sp0.05mm_t150s): this repo's
+  - CaseN/summary.json (e.g. atplace/milp_runs/20260712_case1_10_gurobi_hotspot): this repo's
     own MILP+HotSpot scripts. Units mm, x_mm/y_mm is the lower-left CORNER
     (same historical convention scripts/hotspot_validate.py's
     load_layout_from_summary already converts), rotation in degrees.

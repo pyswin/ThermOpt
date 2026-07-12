@@ -17,11 +17,11 @@ visualization, can be computed downstream without re-running HotSpot.
 
 Usage:
   python3 scripts/dataset_gen/json_to_augmented_csv.py \
-      --milp_dir atplace/milp_runs/20260704_025209_gurobi_t150s_hotspot \
+      --milp_dir atplace/milp_runs/20260712_case1_10_gurobi_hotspot \
       --out_dir atplace/hotspot_augmented_dataset/from_milp_runs
 
   python3 scripts/dataset_gen/json_to_augmented_csv.py \
-      --milp_dir atplace/milp_runs/20260704_025209_gurobi_t150s_hotspot \
+      --milp_dir atplace/milp_runs/20260712_case1_10_gurobi_hotspot \
       --out_dir atplace/hotspot_augmented_dataset/from_milp_runs_no_temp \
       --skip_hotspot
 """
