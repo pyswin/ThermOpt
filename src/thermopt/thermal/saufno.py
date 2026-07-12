@@ -67,8 +67,8 @@ class SAUFNOThermalBackend:
 
         grid_x, grid_y = coordinate_grid(self.case, SURROGATE_NATIVE_GRID_SIZE)
         self._input_phys = np.zeros((*SURROGATE_NATIVE_GRID_SIZE, 1, 3), dtype=np.float32)
-        self._input_phys[:, :, 0, 1] = grid_x
-        self._input_phys[:, :, 0, 2] = grid_y
+        self._input_phys[:, :, 0, 1] = grid_x.T  # transpose: align axis0=grid_y to training input order
+        self._input_phys[:, :, 0, 2] = grid_y.T
 
     @property
     def runtime_mode(self) -> str:
