@@ -44,4 +44,5 @@ src/thermopt/thermal/**/data/predicted_output.npy
 # generated augmented datasets / one-off comparison outputs - not source, regenerate via scripts/
 atplace/hotspot_augmented_dataset/
 atplace/thermal_runs/*_vs_hotspot/
+atplace/milp_runs/
 *.zip
