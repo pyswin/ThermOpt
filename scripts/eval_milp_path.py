@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Eval csv-path vs backend-path inference on MILP layouts, against HotSpot GT.
 
---path csv:     input from json_to_augmented_csv csv (training-style power scatter)
+--path csv:     grid_x/grid_y from json_to_augmented_csv csv, power recomputed via
+                rasterize_power_channel (same as backend) rather than read from the
+                csv's chiplet_power column, which under-counts power at zero-gap
+                touching chiplet boundaries (csv and backend paths now agree exactly
+                whenever chiplets have a real gap; only the coordinate source differs)
 --path backend: input from UFNOThermalBackend._input_phys (rasterize_power_channel,
                 transpose-fixed)
 
@@ -22,6 +26,7 @@ for p in [str(ROOT/"src"), str(ROOT/"src/thermopt/thermal/ufno_demo"), str(ROOT/
 from thermopt.data.atplace import load_atplace_case
 from thermopt.layout.objects import Layout, Placement
 from thermopt.thermal.ufno import UFNOThermalBackend
+from thermopt.thermal.surrogate_input import rasterize_power_channel
 import ufno, sau_fno  # noqa: F401
 from models.normalize import normalize  # noqa: F401
 
@@ -50,11 +55,21 @@ def fwd(inp):
         out[tag] = (o[0,...,0].numpy() - K0).astype(np.float64)
     return out
 
-def csv_input(p):
+def csv_input(p, case_obj, layout):
+    # grid_x/grid_y come from the csv (training-style coordinates); the power
+    # channel is recomputed via rasterize_power_channel (same as the backend
+    # path) instead of reading the csv's chiplet_power column directly --
+    # that column was written by _chiplet_at_point's first-match-only logic,
+    # which under-counts power at zero-gap touching chiplet boundaries
+    # (confirmed empirically: backend's summing gives lower RMSE vs HotSpot
+    # GT, and the two paths agree exactly whenever chiplets have a real gap).
     df = pd.read_csv(p); fx = np.sort(np.unique(df["grid_x"])); fy = np.sort(np.unique(df["grid_y"]))
     xi = np.searchsorted(fx, df["grid_x"]); yi = np.searchsorted(fy, df["grid_y"])
+    grid_x = np.zeros((64,64), dtype=np.float32); grid_y = np.zeros((64,64), dtype=np.float32)
+    grid_x[xi, yi] = df["grid_x"]; grid_y[xi, yi] = df["grid_y"]
+    power = rasterize_power_channel(case_obj, layout, grid_x, grid_y)
     inp = np.zeros((3,1,64,64), dtype=np.float32)
-    inp[0,0,xi,yi] = df["chiplet_power"]; inp[1,0,xi,yi] = df["grid_x"]; inp[2,0,xi,yi] = df["grid_y"]
+    inp[0,0] = power; inp[1,0] = grid_x; inp[2,0] = grid_y
     return inp.transpose(3,2,1,0)   # csv path transpose (training axis order)
 
 def align(p, gt):
@@ -74,7 +89,7 @@ data = {}
 for cn in cases:
     case_obj = load_atplace_case(CASES_DIR/cn, {}, 42).case
     if args.path == "csv":
-        pred = fwd(csv_input(CSV/cn/"sample_000000.csv"))
+        pred = fwd(csv_input(CSV/cn/"sample_000000.csv", case_obj, layout_for(case_obj, cn)))
     else:
         be = UFNOThermalBackend(case=case_obj, config={"backend":"ufno","grid_size":[64,64]})
         be._update_power_channel(layout_for(case_obj, cn))

@@ -48,6 +48,22 @@ def coordinate_grid(case: FloorplanCase, grid_size: tuple[int, int] = SURROGATE_
     return grid_x.astype(np.float32), grid_y.astype(np.float32)
 
 
+def ufno_family_grid_channels(
+    case: FloorplanCase, grid_size: tuple[int, int] = SURROGATE_NATIVE_GRID_SIZE
+) -> tuple[np.ndarray, np.ndarray]:
+    """grid_x/grid_y channels for the U-FNO/SAU-FNO (64,64,1,3) input convention.
+
+    coordinate_grid() uses meshgrid(..., indexing="ij"), but the U-FNO/SAU-FNO
+    training data (convert_case_all.py's scatter + load_mat_pair's transpose)
+    has axis0 aligned to grid_y instead -- so this transposes once here, in the
+    one place both backends assemble their input tensor, instead of each
+    backend (and any future one using this same model family) redoing the
+    same ad-hoc `.T` inline.
+    """
+    grid_x, grid_y = coordinate_grid(case, grid_size)
+    return grid_x.T, grid_y.T
+
+
 def rasterize_power_channel(
     case: FloorplanCase,
     layout: Layout,
