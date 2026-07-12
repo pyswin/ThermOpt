@@ -1,0 +1,66 @@
+{
+  "case": "Case2",
+  "n_chiplets": 6,
+  "solver_success": true,
+  "solver_message": "gurobi status=2",
+  "solver_objective": 12081.119693120027,
+  "milp_time_limit_s": 150.0,
+  "milp_runtime_s": 0.11666750907897949,
+  "wl_m": 16.868319910320007,
+  "overlap_penalty": 2.557050945230183e-17,
+  "outline_penalty": 0.0,
+  "legal": true,
+  "hotspot_tmax_c": 56.26784937987474,
+  "hotspot_top5pct_c": 55.396496528576826,
+  "hotspot_runtime_s": 115.95146012306213,
+  "chiplets": [
+    {
+      "name": "HBM_0",
+      "x_mm": 18.826909,
+      "y_mm": 5.5,
+      "cx_mm": 24.826909,
+      "cy_mm": 9.5,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_1",
+      "x_mm": 21.546909,
+      "y_mm": 13.5,
+      "cx_mm": 27.546909,
+      "cy_mm": 17.5,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_2",
+      "x_mm": 21.573091,
+      "y_mm": 36.0,
+      "cx_mm": 27.573091,
+      "cy_mm": 40.0,
+      "rotation": 270
+    },
+    {
+      "name": "HBM_3",
+      "x_mm": 18.853091,
+      "y_mm": 44.0,
+      "cx_mm": 24.853091,
+      "cy_mm": 48.0,
+      "rotation": 270
+    },
+    {
+      "name": "Virtuvian_0",
+      "x_mm": 10.5,
+      "y_mm": 21.5,
+      "cx_mm": 26.2,
+      "cy_mm": 28.75,
+      "rotation": 180
+    },
+    {
+      "name": "Nimbus_0",
+      "x_mm": 0.0,
+      "y_mm": 20.763091,
+      "cx_mm": 5.25,
+      "cy_mm": 28.763091,
+      "rotation": 0
+    }
+  ]
+}

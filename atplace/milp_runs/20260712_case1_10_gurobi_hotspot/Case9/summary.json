@@ -1,0 +1,370 @@
+{
+  "case": "Case9",
+  "n_chiplets": 44,
+  "solver_success": false,
+  "solver_message": "gurobi status=9",
+  "solver_objective": 27366.880981599083,
+  "milp_time_limit_s": 100.0,
+  "milp_runtime_s": 100.38080024719238,
+  "wl_m": 40.40034930588161,
+  "overlap_penalty": 0.0,
+  "outline_penalty": 0.0,
+  "legal": true,
+  "hotspot_tmax_c": 116.80114819076846,
+  "hotspot_top5pct_c": 113.48428955376552,
+  "hotspot_runtime_s": 130.2174255847931,
+  "chiplets": [
+    {
+      "name": "CPU1_0",
+      "x_mm": 24.990227,
+      "y_mm": 16.5,
+      "cx_mm": 26.240227,
+      "cy_mm": 18.25,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_1",
+      "x_mm": 47.550227,
+      "y_mm": 26.25,
+      "cx_mm": 49.300227,
+      "cy_mm": 27.5,
+      "rotation": 270
+    },
+    {
+      "name": "CPU1_2",
+      "x_mm": 16.270227,
+      "y_mm": 30.509773,
+      "cx_mm": 17.520227,
+      "cy_mm": 32.259773,
+      "rotation": 180
+    },
+    {
+      "name": "CPU1_3",
+      "x_mm": 18.770227,
+      "y_mm": 32.770227,
+      "cx_mm": 20.520227,
+      "cy_mm": 34.020227,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_0",
+      "x_mm": 27.490227,
+      "y_mm": 10.0,
+      "cx_mm": 29.990227,
+      "cy_mm": 12.5,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 26.980455,
+      "y_mm": 25.0,
+      "cx_mm": 29.480455,
+      "cy_mm": 27.5,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_2",
+      "x_mm": 42.550227,
+      "y_mm": 25.0,
+      "cx_mm": 45.050227,
+      "cy_mm": 27.5,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_3",
+      "x_mm": 41.490227,
+      "y_mm": 9.96,
+      "cx_mm": 43.990227,
+      "cy_mm": 12.46,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_4",
+      "x_mm": 12.509773,
+      "y_mm": 38.54,
+      "cx_mm": 15.009773,
+      "cy_mm": 41.04,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_5",
+      "x_mm": 17.509773,
+      "y_mm": 37.150455,
+      "cx_mm": 20.009773,
+      "cy_mm": 39.650455,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_6",
+      "x_mm": 22.270227,
+      "y_mm": 30.0,
+      "cx_mm": 24.770227,
+      "cy_mm": 32.5,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_7",
+      "x_mm": 15.950227,
+      "y_mm": 20.0,
+      "cx_mm": 18.450227,
+      "cy_mm": 22.5,
+      "rotation": 270
+    },
+    {
+      "name": "CPU2_8",
+      "x_mm": 27.490227,
+      "y_mm": 5.0,
+      "cx_mm": 29.990227,
+      "cy_mm": 7.5,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_9",
+      "x_mm": 11.120227,
+      "y_mm": 30.509773,
+      "cx_mm": 13.620227,
+      "cy_mm": 33.009773,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_10",
+      "x_mm": 22.000455,
+      "y_mm": 20.0,
+      "cx_mm": 24.500455,
+      "cy_mm": 22.5,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_11",
+      "x_mm": 27.490227,
+      "y_mm": 15.0,
+      "cx_mm": 29.990227,
+      "cy_mm": 17.5,
+      "rotation": 0
+    },
+    {
+      "name": "GPU_0",
+      "x_mm": 32.490227,
+      "y_mm": 8.0,
+      "cx_mm": 36.990227,
+      "cy_mm": 12.5,
+      "rotation": 180
+    },
+    {
+      "name": "GPU_1",
+      "x_mm": 31.980455,
+      "y_mm": 25.0,
+      "cx_mm": 36.480455,
+      "cy_mm": 29.5,
+      "rotation": 180
+    },
+    {
+      "name": "GPU_2",
+      "x_mm": 40.980455,
+      "y_mm": 30.0,
+      "cx_mm": 45.480455,
+      "cy_mm": 34.5,
+      "rotation": 270
+    },
+    {
+      "name": "GPU_3",
+      "x_mm": 46.490227,
+      "y_mm": 8.0,
+      "cx_mm": 50.990227,
+      "cy_mm": 12.5,
+      "rotation": 180
+    },
+    {
+      "name": "GPU_4",
+      "x_mm": 3.509773,
+      "y_mm": 36.5,
+      "cx_mm": 8.009773,
+      "cy_mm": 41.0,
+      "rotation": 0
+    },
+    {
+      "name": "GPU_5",
+      "x_mm": 15.469772,
+      "y_mm": 44.0,
+      "cx_mm": 19.969772,
+      "cy_mm": 48.5,
+      "rotation": 270
+    },
+    {
+      "name": "GPU_6",
+      "x_mm": 22.509773,
+      "y_mm": 35.0,
+      "cx_mm": 27.009773,
+      "cy_mm": 39.5,
+      "rotation": 270
+    },
+    {
+      "name": "GPU_7",
+      "x_mm": 13.990227,
+      "y_mm": 11.0,
+      "cx_mm": 18.490227,
+      "cy_mm": 15.5,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_0",
+      "x_mm": 33.0,
+      "y_mm": 0.0,
+      "cx_mm": 39.0,
+      "cy_mm": 4.0,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_1",
+      "x_mm": 32.490227,
+      "y_mm": 17.0,
+      "cx_mm": 38.490227,
+      "cy_mm": 21.0,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_2",
+      "x_mm": 41.430227,
+      "y_mm": 39.0,
+      "cx_mm": 47.430227,
+      "cy_mm": 43.0,
+      "rotation": 270
+    },
+    {
+      "name": "HBM_3",
+      "x_mm": 47.0,
+      "y_mm": 0.0,
+      "cx_mm": 53.0,
+      "cy_mm": 4.0,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_4",
+      "x_mm": 0.0,
+      "y_mm": 45.5,
+      "cx_mm": 6.0,
+      "cy_mm": 49.5,
+      "rotation": 270
+    },
+    {
+      "name": "HBM_5",
+      "x_mm": 15.919545,
+      "y_mm": 53.0,
+      "cx_mm": 21.919545,
+      "cy_mm": 57.0,
+      "rotation": 270
+    },
+    {
+      "name": "HBM_6",
+      "x_mm": 31.509773,
+      "y_mm": 35.509773,
+      "cx_mm": 35.509773,
+      "cy_mm": 41.509773,
+      "rotation": 180
+    },
+    {
+      "name": "HBM_7",
+      "x_mm": 5.990227,
+      "y_mm": 7.490227,
+      "cx_mm": 9.990227,
+      "cy_mm": 13.490227,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 18.490227,
+      "y_mm": 1.990227,
+      "cx_mm": 22.990227,
+      "cy_mm": 6.490227,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 2.120227,
+      "y_mm": 27.5,
+      "cx_mm": 6.620227,
+      "cy_mm": 32.0,
+      "rotation": 0
+    },
+    {
+      "name": "IODie_0",
+      "x_mm": 21.980455,
+      "y_mm": 25.0,
+      "cx_mm": 24.480455,
+      "cy_mm": 27.5,
+      "rotation": 180
+    },
+    {
+      "name": "IODie_1",
+      "x_mm": 27.470227,
+      "y_mm": 20.0,
+      "cx_mm": 29.970227,
+      "cy_mm": 22.5,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_0",
+      "x_mm": 22.990227,
+      "y_mm": 16.5,
+      "cx_mm": 23.990227,
+      "cy_mm": 18.0,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_1",
+      "x_mm": 25.490227,
+      "y_mm": 13.5,
+      "cx_mm": 26.490227,
+      "cy_mm": 15.0,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_2",
+      "x_mm": 49.529773,
+      "y_mm": 23.25,
+      "cx_mm": 50.529773,
+      "cy_mm": 24.75,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_3",
+      "x_mm": 51.050227,
+      "y_mm": 27.09,
+      "cx_mm": 52.550227,
+      "cy_mm": 28.09,
+      "rotation": 180
+    },
+    {
+      "name": "Analog_4",
+      "x_mm": 14.110227,
+      "y_mm": 28.509773,
+      "cx_mm": 15.610227,
+      "cy_mm": 29.509773,
+      "rotation": 0
+    },
+    {
+      "name": "Analog_5",
+      "x_mm": 17.110227,
+      "y_mm": 27.509773,
+      "cx_mm": 18.110227,
+      "cy_mm": 29.009773,
+      "rotation": 90
+    },
+    {
+      "name": "Analog_6",
+      "x_mm": 16.770227,
+      "y_mm": 34.009773,
+      "cx_mm": 17.770227,
+      "cy_mm": 35.509773,
+      "rotation": 270
+    },
+    {
+      "name": "Analog_7",
+      "x_mm": 18.770227,
+      "y_mm": 30.770227,
+      "cx_mm": 20.270227,
+      "cy_mm": 31.770227,
+      "rotation": 180
+    }
+  ]
+}

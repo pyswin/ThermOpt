@@ -1,0 +1,114 @@
+{
+  "case": "Case5",
+  "n_chiplets": 12,
+  "solver_success": false,
+  "solver_message": "gurobi status=9",
+  "solver_objective": 37644.52810061212,
+  "milp_time_limit_s": 150.0,
+  "milp_runtime_s": 156.19762516021729,
+  "wl_m": 40.85630662530676,
+  "overlap_penalty": 3.48584070477045e-09,
+  "outline_penalty": 0.0,
+  "legal": false,
+  "hotspot_tmax_c": 125.24696202531646,
+  "hotspot_top5pct_c": 123.66477217427446,
+  "hotspot_runtime_s": 173.00268602371216,
+  "chiplets": [
+    {
+      "name": "CPU2_0",
+      "x_mm": 19.0,
+      "y_mm": 9.266909,
+      "cx_mm": 23.5,
+      "cy_mm": 13.266909,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 19.513091,
+      "y_mm": 25.266909,
+      "cx_mm": 23.513091,
+      "cy_mm": 29.766909,
+      "rotation": 180
+    },
+    {
+      "name": "CPU2_2",
+      "x_mm": 11.0,
+      "y_mm": 3.0,
+      "cx_mm": 15.0,
+      "cy_mm": 7.5,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_3",
+      "x_mm": 10.0,
+      "y_mm": 20.0,
+      "cx_mm": 14.5,
+      "cy_mm": 24.0,
+      "rotation": 270
+    },
+    {
+      "name": "CPU2_4",
+      "x_mm": 19.0,
+      "y_mm": 17.266909,
+      "cx_mm": 23.5,
+      "cy_mm": 21.266909,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_5",
+      "x_mm": 10.0,
+      "y_mm": 12.0,
+      "cx_mm": 14.5,
+      "cy_mm": 16.0,
+      "rotation": 270
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 28.0,
+      "y_mm": 10.284295,
+      "cx_mm": 32.5,
+      "cy_mm": 14.784295,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 10.51309,
+      "y_mm": 28.0,
+      "cx_mm": 15.01309,
+      "cy_mm": 32.5,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_2",
+      "x_mm": 19.0,
+      "y_mm": 0.266909,
+      "cx_mm": 23.5,
+      "cy_mm": 4.766909,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_3",
+      "x_mm": 1.0,
+      "y_mm": 17.982614,
+      "cx_mm": 5.5,
+      "cy_mm": 22.482614,
+      "rotation": 0
+    },
+    {
+      "name": "DRAM_4",
+      "x_mm": 28.0,
+      "y_mm": 19.284295,
+      "cx_mm": 32.5,
+      "cy_mm": 23.784295,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_5",
+      "x_mm": 1.0,
+      "y_mm": 8.982614,
+      "cx_mm": 5.5,
+      "cy_mm": 13.482614,
+      "rotation": 0
+    }
+  ]
+}

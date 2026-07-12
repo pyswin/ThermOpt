@@ -1,0 +1,82 @@
+{
+  "case": "Case3",
+  "n_chiplets": 8,
+  "solver_success": true,
+  "solver_message": "gurobi status=2",
+  "solver_objective": 14287.810245599801,
+  "milp_time_limit_s": 150.0,
+  "milp_runtime_s": 0.44977355003356934,
+  "wl_m": 31.366248807182632,
+  "overlap_penalty": 0.0,
+  "outline_penalty": 0.0,
+  "legal": true,
+  "hotspot_tmax_c": 104.2419677790564,
+  "hotspot_top5pct_c": 102.5068457773942,
+  "hotspot_runtime_s": 155.6855173110962,
+  "chiplets": [
+    {
+      "name": "CPU2_0",
+      "x_mm": 17.254772,
+      "y_mm": 17.0,
+      "cx_mm": 21.754772,
+      "cy_mm": 21.0,
+      "rotation": 90
+    },
+    {
+      "name": "CPU2_1",
+      "x_mm": 8.486909,
+      "y_mm": 9.0,
+      "cx_mm": 12.986909,
+      "cy_mm": 13.0,
+      "rotation": 270
+    },
+    {
+      "name": "CPU2_2",
+      "x_mm": 17.486909,
+      "y_mm": 8.0,
+      "cx_mm": 21.486909,
+      "cy_mm": 12.5,
+      "rotation": 0
+    },
+    {
+      "name": "CPU2_3",
+      "x_mm": 9.0,
+      "y_mm": 17.0,
+      "cx_mm": 13.0,
+      "cy_mm": 21.5,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_0",
+      "x_mm": 17.267863,
+      "y_mm": 25.0,
+      "cx_mm": 21.767863,
+      "cy_mm": 29.5,
+      "rotation": 270
+    },
+    {
+      "name": "DRAM_1",
+      "x_mm": 8.473818,
+      "y_mm": 0.0,
+      "cx_mm": 12.973818,
+      "cy_mm": 4.5,
+      "rotation": 90
+    },
+    {
+      "name": "DRAM_2",
+      "x_mm": 25.486909,
+      "y_mm": 7.986909,
+      "cx_mm": 29.986909,
+      "cy_mm": 12.486909,
+      "rotation": 180
+    },
+    {
+      "name": "DRAM_3",
+      "x_mm": 0.0,
+      "y_mm": 17.013091,
+      "cx_mm": 4.5,
+      "cy_mm": 21.513091,
+      "rotation": 0
+    }
+  ]
+}

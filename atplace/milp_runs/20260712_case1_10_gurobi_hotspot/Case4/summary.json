@@ -1,0 +1,106 @@
+{
+  "case": "Case4",
+  "n_chiplets": 11,
+  "solver_success": true,
+  "solver_message": "gurobi status=2",
+  "solver_objective": 37220.61104479971,
+  "milp_time_limit_s": 150.0,
+  "milp_runtime_s": 5.681812047958374,
+  "wl_m": 42.305536331000035,
+  "overlap_penalty": 0.0,
+  "outline_penalty": 0.0,
+  "legal": true,
+  "hotspot_tmax_c": 111.96983505945533,
+  "hotspot_top5pct_c": 110.26926828730336,
+  "hotspot_runtime_s": 134.46474599838257,
+  "chiplets": [
+    {
+      "name": "CPU1_0",
+      "x_mm": 26.0,
+      "y_mm": 35.0,
+      "cx_mm": 32.0,
+      "cy_mm": 41.0,
+      "rotation": 90
+    },
+    {
+      "name": "CPU1_1",
+      "x_mm": 26.0,
+      "y_mm": 23.0,
+      "cx_mm": 32.0,
+      "cy_mm": 29.0,
+      "rotation": 180
+    },
+    {
+      "name": "GPU_0",
+      "x_mm": 8.0,
+      "y_mm": 41.0,
+      "cx_mm": 17.0,
+      "cy_mm": 50.0,
+      "rotation": 180
+    },
+    {
+      "name": "GPU_1",
+      "x_mm": 8.0,
+      "y_mm": 23.0,
+      "cx_mm": 17.0,
+      "cy_mm": 32.0,
+      "rotation": 270
+    },
+    {
+      "name": "GPU_2",
+      "x_mm": 22.986909,
+      "y_mm": 5.0,
+      "cx_mm": 31.986909,
+      "cy_mm": 14.0,
+      "rotation": 0
+    },
+    {
+      "name": "GPU_3",
+      "x_mm": 38.0,
+      "y_mm": 23.0,
+      "cx_mm": 47.0,
+      "cy_mm": 32.0,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_0",
+      "x_mm": 0.0,
+      "y_mm": 44.013091,
+      "cx_mm": 4.0,
+      "cy_mm": 50.013091,
+      "rotation": 0
+    },
+    {
+      "name": "HBM_1",
+      "x_mm": 10.986909,
+      "y_mm": 15.0,
+      "cx_mm": 16.986909,
+      "cy_mm": 19.0,
+      "rotation": 90
+    },
+    {
+      "name": "HBM_2",
+      "x_mm": 40.986909,
+      "y_mm": 7.986909,
+      "cx_mm": 44.986909,
+      "cy_mm": 13.986909,
+      "rotation": 180
+    },
+    {
+      "name": "HBM_3",
+      "x_mm": 41.013091,
+      "y_mm": 41.0,
+      "cx_mm": 47.013091,
+      "cy_mm": 45.0,
+      "rotation": 270
+    },
+    {
+      "name": "HBM_4",
+      "x_mm": 26.013091,
+      "y_mm": 47.0,
+      "cx_mm": 32.013091,
+      "cy_mm": 51.0,
+      "rotation": 270
+    }
+  ]
+}
